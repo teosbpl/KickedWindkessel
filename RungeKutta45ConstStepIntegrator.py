@@ -22,17 +22,13 @@ namespace UserMath.Integrators
         public class RungeKutta45IntegratorParams
         {
             public int dimension;
-//            public double Tol;                    //error control tolerance
             public double Tmin;                         //endpoints
-//            public double Tmax;
             private double dT;
             public int Npoints;
             public RungeKutta45IntegratorParams() 
             {
                 this.dimension = 0;
-//                this.Tol = 0.0d;                    //error control tolerance
                 this.Tmin = 0.0d;                         //endpoints
-//                this.Tmax = 0.0d;
                 this.Npoints = 0;
                 this.dT = 0.0;
             }
@@ -95,7 +91,6 @@ namespace UserMath.Integrators
             this.k2 = new double[this.param.dimension];
             this.k3 = new double[this.param.dimension];
             this.k4 = new double[this.param.dimension];
-            //this.err = new double[this.param.dimension];
             this.dt = this.param.Tdelta;
             this.tmax = this.param.Tmin + this.param.Npoints * this.dt;
         }
