@@ -7,6 +7,7 @@ Created on Sat Jun  3 21:13:26 2017
 import numpy as np
 from scipy.integrate import ode
 import pdb
+from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
 
 """ 
   C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
@@ -32,17 +33,26 @@ import pdb
      """
 class HeartActionForce:
     def __init__(self):
-        self.Drive = 1.0
-        self.CoordinateNumber = 0
+        self.Drive = 0.0
+        self.CoordinateNumber = 4
+        self.Amplitude = 1.0
+        self.StepWidth = 0.01
+        self.StepPeriod = 1.0
+        self.LastStepStart = 0.0
+   
     def ApplyDrive(self,data):
-        pass
+        isOpen = self.Drive == self.Amplitude
+        timeFromLastStepStart = data.t - self.LastStepStart
+        if isOpen: # check if it is time to close
+            if timeFromLastStepStart > self.StepWidth:
+                self.Drive = 0.0
+        else: #check if it is time to open
+            if timeFromLastStepStart == 0.0 or timeFromLastStepStart > self.StepPeriod: # initial kick
+                self.Drive = self.Amplitude
+                self.LastStepStart = data.t       
+        data[self.CoordinateNumber] = self.Drive
+"""        
 
-class  RungeKutta45IntegratorParams:
-            def __init__(self):
-                self.dimension = 0
-                self.Tmin = 0
-                self.dT = 0
-                self.Npoints = 0
 
 class RungeKutta45ConstStepIntegrator:
 
@@ -67,26 +77,15 @@ class RungeKutta45ConstStepIntegrator:
         if not self.r.successful():
             return False
         self.data.t = self.data.t + self.param.Tdelta
-        #print("Przed %s" % self.data.y)
+        print("Przed %s" % self.data.y)
         self.data.y = self.r.integrate(self.data.t)
-        #print("Po %s" % self.data.y)
+        print("Po %s" % self.data.y)
         return self.data.t < self.endTime
-    class  RungeKutta45IntegratorData:
-            def __init__(self,param = RungeKutta45IntegratorParams()):
-                self.dimension = param.dimension
-                self.y =  [0 for x in range(self.dimension)]
-                self.t = param.Tmin
-            def __str__(self):
-                return "%lf,%s"%(self.t,','.join([str(x) for x in self.y]))
-            def __getitem__(self, index):
-                result = self.y.__getitem__(index)
-                return result          
-            def __setitem__(self, index,value):
-                result = self.y.__setitem__(index,value)
-                return result                  
+"""        
+               
     
         # Place your FUNCTION HERE
-def f(t,y,settings):
+def f(t,y,Freturn,settings):
             """definition of equation-example
             damped harmonic oscillator with harmonic driver
             x" + 100*x + 2*x'= 10*sin 3*t
@@ -98,7 +97,7 @@ def f(t,y,settings):
             You may enter your own equation here!"""
             #pdb.set_trace()
             #print(y)
-            Freturn = y
+            #Freturn = y
             #print(len(y))
             p_a, p_c, p_v, p_I,dummy = y
             
@@ -124,12 +123,13 @@ def f(t,y,settings):
                 q_ca = 0.0
             q_vc = np.max(settings.Zvc * (p_v - p_c), 0.0)
             q_av = settings.Zav * (p_a - p_v)
+            #print("Q:%f\t%f\t%f"%(q_ca,q_vc,q_av))
             Freturn[0] = (q_ca - q_av) / settings.Ca#; //p_a : //C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
             Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	
             Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
             #//non-autonomous
             Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
-            #print(Freturn)
+            print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
             #y = Freturn
             #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
             #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))
@@ -161,12 +161,12 @@ class KickedWindkesselModel:
                 self.Ca = 1.6
                 self.Cc = 4.3
                 self.Cv = 100.0
-                self.Zca = 1 / 0.006
+                self.Zca = 1 / 0.006 # 166.[6]
                 self.Zav = 1 / 0.9
                 self.Zvc = 1 / 0.005
                 #breathing
                 self.p_I0 = -4.0
-                self.p_I1 = 2.0
+                self.p_I1 = 0.1 #2.0
                 self.breathingPeriod = 3.0
                 self.heartPhase = 0.0
                 #self.heartActionForce = NullDrivingForce()
@@ -174,7 +174,7 @@ class KickedWindkesselModel:
                 self.heartFlowTimespan = 0.01#;//0.1 sec
                 self.throwAmplitudeDeathException = False
                 self.heartFlowBeginTime = -1
-                self.openHeartFlow = 0.0
+                self.openHeartFlow = 1.0
             
             """def __init__(self,settings):   
                 self.lastHeartBeatTime = 0.0;
@@ -237,10 +237,10 @@ class KickedWindkesselModel:
             self.settings = settings#;// new KickedWindkesselModelSettings(settings);
             self.param = RungeKutta45IntegratorParams()
             self.param.dimension = self.ModelDimension
-            self.param.Tdelta = 0.000001#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
+            self.param.Tdelta = 0.01#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
             self.param.Tmin = 0.0#                         //startpoint
             self.param.Npoints = 10000#
-            self.data = RungeKutta45ConstStepIntegrator.RungeKutta45IntegratorData(self.param)
+            self.data = RungeKutta45IntegratorData(self.param)
             #//initialize
             self.data[0] = 90.0#90.0#;//P(2) = 90;%Pa 90
             self.data[1] = 35.0#;//P(1) = 35;%25;%95;%Pb
@@ -248,7 +248,7 @@ class KickedWindkesselModel:
             self.data[3] = settings.p_I0#;
             self.data[4] = 0#;
             
-            self.integrator = RungeKutta45ConstStepIntegrator(self.param,lambda t,y: f(t,y,self.settings),self.data)
+            self.integrator = RungeKutta45ConstStepIntegrator(self.param,self.data,f)#,lambda t,y: f(t,y,self.settings),self.data)
                  
 
         def IterateToNotifiers(self):
@@ -256,29 +256,29 @@ class KickedWindkesselModel:
             self.integrator.Reset(self.param)
             self.Notify(self.data)
             while True:            
-                #self.settings.heartActionForce.ApplyDrive(self.data)
-                #self.data[self.settings.heartActionForce.CoordinateNumber] = self.settings.heartActionForce.Drive
+                self.settings.heartActionForce.ApplyDrive(self.data)                
                 self.settings.openHeartFlow = self.settings.heartActionForce.Drive
                 isHeartOpen = (self.settings.heartFlowBeginTime != -1.0)
                 self.settings.sineOfBreathingPhase = np.sin(2 * np.pi * self.data.t / self.settings.breathingPeriod)
                 if isHeartOpen:                
                     abc = 1
                 
-                if not self.integrator.Iterate():
+                if self.integrator.Iterate(self.settings):
+                    print("yawn")
                     break
-                for i in range(len(self.data.y)):
-                    if self.data.y[i] < 0:
-                        self.data.y[i] = 0
-                isHeartClosedAfter = (self.settings.heartFlowBeginTime == -1.0)
-                if  isHeartOpen and isHeartClosedAfter: #//it has just closed.                
-                    self.settings.lastSystolicBp = self.data[0]                
-                if self.settings.throwAmplitudeDeathException:
-                    if self.data[0] < 0.0:
-                        raise Exception("Amplitude death occurred")
+#                for i in range(len(self.data.y)):
+#                    if self.data.y[i] < 0:
+#                        self.data.y[i] = 0
+#                isHeartClosedAfter = (self.settings.heartFlowBeginTime == -1.0)
+#                if  isHeartOpen and isHeartClosedAfter: #//it has just closed.                
+#                    self.settings.lastSystolicBp = self.data[0]                
+#                if self.settings.throwAmplitudeDeathException:
+#                    if self.data[0] < 0.0:
+#                        raise Exception("Amplitude death occurred")
                 self.Notify(self.data)
 
 def NotifyPlainPrint(data):
-    print(str(data))
+    print("NPP:"+str(data))
 
 def DummyPrint(data):
     pass
