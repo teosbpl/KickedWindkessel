@@ -66,8 +66,6 @@ class RungeKutta45ConstStepIntegrator:
             self.data = data
             self.Reset(param)
             self.f = function
-            self.states = np.zeros((self.param.Npoints,self.param.dimension+1))# all + time
-            self.statesIterator = 0
             
         #RungeKutta45IntegratorParams 
         def Reset(self,param):        
@@ -81,16 +79,19 @@ class RungeKutta45ConstStepIntegrator:
             self.dt = self.param.dT;
             self.tmax = self.param.Tmin + self.param.Npoints * self.dt
             
-        def Iterate(self,settings=None):            
+        def Iterate(self,settings=None):
+            #print("t=%f dt=%f"%(self.data.t,self.dt))
             return self.RK4(settings)
 
-        def IterateSeries(self,settings=None):            
+        def IterateSeries(self,settings=None):
+            states = np.zeros((self.param.Npoints,self.param.dimension+1))# all + time
+            statesIterator = 0            
             while self.RK4(settings):
-                self.states[self.statesIterator,0] = self.data.t
+                states[statesIterator,0] = self.data.t
                 for ii in range(self.param.dimension):                    
-                    self.states[self.statesIterator,ii+1] = self.data.y[ii]
-                self.statesIterator = self.statesIterator+1
-            return self.states
+                    states[statesIterator,ii+1] = self.data.y[ii]
+                statesIterator = statesIterator+1
+            return states
                                     
         
         def RK4(self,settings):
@@ -170,7 +171,7 @@ class RungeKutta45IntegratorTest(unittest.TestCase):
         self.assertEqual(params.dT, copy_params.dT)
         self.assertEqual(params.Npoints, copy_params.Npoints)
 
-    def testSimpleHarmonicOScillator(self):
+    def testSimpleHarmonicOscillator(self):
         import matplotlib.pyplot as plt
         params = RungeKutta45IntegratorParams()
         params.dimension = 2
@@ -185,13 +186,33 @@ class RungeKutta45IntegratorTest(unittest.TestCase):
         t = states[:,0]                
         x = states[:,1]        
         y = states[:,2]
-        fig = plt.figure()
-        plt.plot(x,y)
-        plt.show()
+        #fig = plt.figure()
+        #plt.plot(x,y)
+        #plt.show()
         
         print(states)
         
-
+    def testSimpleHarmonicOscillatorWithNotifier(self):
+        import matplotlib.pyplot as plt
+        params = RungeKutta45IntegratorParams()
+        params.dimension = 2
+        params.Tmin = 0.0
+        params.dT = 0.001
+        params.Npoints = 100000
+        data = RungeKutta45IntegratorData(params)
+        data.y[0] = 1.0
+        data.y[1] = 2.0
+        integrator = RungeKutta45ConstStepIntegrator(params,data,testfunction)
+        Notify = NotifyPlainPrint        
+        while True:                            
+            Notify(data)
+            if not integrator.Iterate(None):
+               break        
+        
+def NotifyPlainPrint(data):
+    print("NPP:"+str(data))        
+                
+        
 def testfunction(t,y,Freturn,settings):
             """definition of equation-example
             damped harmonic oscillator with harmonic driver

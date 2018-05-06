@@ -5,7 +5,8 @@ Created on Sat Jun  3 21:13:26 2017
 @author: teos
 """
 import numpy as np
-from scipy.integrate import ode
+#from scipy.integrate import ode
+import matplotlib.pyplot as plt
 import pdb
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
 
@@ -39,7 +40,7 @@ class HeartActionForce:
         self.StepWidth = 0.01
         self.StepPeriod = 1.0
         self.LastStepStart = 0.0
-   
+    pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
     def ApplyDrive(self,data):
         isOpen = self.Drive == self.Amplitude
         timeFromLastStepStart = data.t - self.LastStepStart
@@ -85,7 +86,7 @@ class RungeKutta45ConstStepIntegrator:
                
     
         # Place your FUNCTION HERE
-def f(t,y,Freturn,settings):
+def kickedWindkesselRHS(t,y,Freturn,settings):
             """definition of equation-example
             damped harmonic oscillator with harmonic driver
             x" + 100*x + 2*x'= 10*sin 3*t
@@ -129,7 +130,7 @@ def f(t,y,Freturn,settings):
             Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
             #//non-autonomous
             Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
-            print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
+            #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
             #y = Freturn
             #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
             #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))
@@ -237,7 +238,7 @@ class KickedWindkesselModel:
             self.settings = settings#;// new KickedWindkesselModelSettings(settings);
             self.param = RungeKutta45IntegratorParams()
             self.param.dimension = self.ModelDimension
-            self.param.Tdelta = 0.01#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
+            self.param.dT = 0.01#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
             self.param.Tmin = 0.0#                         //startpoint
             self.param.Npoints = 10000#
             self.data = RungeKutta45IntegratorData(self.param)
@@ -248,13 +249,14 @@ class KickedWindkesselModel:
             self.data[3] = settings.p_I0#;
             self.data[4] = 0#;
             
-            self.integrator = RungeKutta45ConstStepIntegrator(self.param,self.data,f)#,lambda t,y: f(t,y,self.settings),self.data)
+            self.integrator = RungeKutta45ConstStepIntegrator(self.param,self.data,kickedWindkesselRHS)#,lambda t,y: f(t,y,self.settings),self.data)
                  
 
         def IterateToNotifiers(self):
 
             self.integrator.Reset(self.param)
             self.Notify(self.data)
+            print("Iterating from T0=0.0 to Tmax=%f, dT=%f, npoints=%d" % (self.integrator.Tmax(),self.integrator.param.dT,self.integrator.param.Npoints))
             while True:            
                 self.settings.heartActionForce.ApplyDrive(self.data)                
                 self.settings.openHeartFlow = self.settings.heartActionForce.Drive
@@ -263,9 +265,13 @@ class KickedWindkesselModel:
                 if isHeartOpen:                
                     abc = 1
                 
-                if self.integrator.Iterate(self.settings):
-                    print("yawn")
+                if not self.integrator.Iterate(self.settings):
+                    print("Iterations completed.")
                     break
+                t = self.data.t
+                p_I = self.data[3]
+                self.data[4] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * t / self.settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
+                self.Notify(self.data)
 #                for i in range(len(self.data.y)):
 #                    if self.data.y[i] < 0:
 #                        self.data.y[i] = 0
@@ -275,10 +281,68 @@ class KickedWindkesselModel:
 #                if self.settings.throwAmplitudeDeathException:
 #                    if self.data[0] < 0.0:
 #                        raise Exception("Amplitude death occurred")
-                self.Notify(self.data)
+                
 
 def NotifyPlainPrint(data):
     print("NPP:"+str(data))
+
+class SeriesNotifier:
+    def __init__(self,param):
+        self.param = param
+        self.states = np.zeros((param.Npoints+1,param.dimension+1))# all + time
+        self.statesIterator = 0            
+
+    def Notify(self,data):
+        self.states[self.statesIterator,0] = data.t
+        for ii in range(self.param.dimension):                    
+            self.states[self.statesIterator,ii+1] = data.y[ii]
+        self.statesIterator = self.statesIterator+1
+    def PlotSeries(self,rangeOfVars,fileName = None):
+        t = self.states[:,0]
+        fig = plt.figure()
+        for varNumber in rangeOfVars:         
+            x = self.states[:,varNumber]        
+            plt.plot(t,x)
+        if fileName:
+            plt.savefig(fileName)
+        else:
+            plt.show()
+
+class StatsNotifier:
+    def __init__(self,param):
+        self.param = param
+        self.sumValues = np.zeros(param.dimension)
+        self.sumSquares = np.zeros(param.dimension)
+        self.statesIterator = 0            
+
+    def Notify(self,data):
+        for ii in range(self.param.dimension):                    
+            self.sumValues[ii] = self.sumValues[ii] + data.y[ii]
+            self.sumSquares[ii] = self.sumSquares[ii] + (data.y[ii] * data.y[ii])
+        self.statesIterator = self.statesIterator+1
+    def GetStats(self):
+        """
+        Sensitive to catrastrophic cancellation.
+        """
+        AV = np.zeros(self.param.dimension)
+        SD = np.zeros(self.param.dimension)
+        for ii in range(self.param.dimension):                    
+            AV[ii] = (1.0 * self.sumValues[ii] / self.statesIterator)
+            SD[ii] = np.sqrt((1.0 * self.sumSquares[ii] / self.statesIterator) - AV[ii]*AV[ii])
+        return AV,SD
+
+
+class NotifierChain:
+    def __init__(self,notifiers = None):
+        self.notifiers = []
+        if notifiers:
+            for notifier in notifiers:
+                self.RegisterNotifier(notifier)        
+    def RegisterNotifier(self,notifier):
+        self.notifiers.append(notifier)
+    def Notify(self,data):
+        for notifier in self.notifiers:
+            notifier.Notify(data)
 
 def DummyPrint(data):
     pass
@@ -286,8 +350,18 @@ if __name__ == "__main__":
     settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
     settings.heartActionForce = HeartActionForce()
     model = KickedWindkesselModel(settings)
-    model.param.Npoints = 100
-    model.Notify = NotifyPlainPrint
-    #model.Notify = DummyPrint
+    model.param.Npoints = 1000
+    series = SeriesNotifier(model.param)
+    stats = StatsNotifier(model.param)
+    chain = NotifierChain((series,stats))
+    #model.Notify = NotifyPlainPrint
+    #model.Notify = series.NotifyToSeries
+    model.Notify = chain.Notify
     model.IterateToNotifiers()
+    series.PlotSeries((1,2,3,4),"overview.png")
+    AV,SD = stats.GetStats()
+    print(AV)
+    print(SD)
+    #series.PlotSeries((4,))
+
 
