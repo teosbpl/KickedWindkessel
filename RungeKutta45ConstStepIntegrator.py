@@ -41,10 +41,10 @@ class RungeKutta45IntegratorParams:
         self.Npoints = src.Npoints
 
 class  RungeKutta45IntegratorData:
-            def __init__(self,param):                
-                self.dimension = param.dimension                
+            def __init__(self,dimension,Tmin): 
+                self.dimension = dimension                
                 self.y =  np.zeros(self.dimension)#array([0.0 for x in range(self.dimension)])
-                self.t = param.Tmin
+                self.t = Tmin
             def __str__(self):
                 return "%lf,%s"%(self.t,','.join([str(x) for x in self.y]))
             def __getitem__(self, index):

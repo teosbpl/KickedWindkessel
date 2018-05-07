@@ -4,11 +4,16 @@ Created on Sat Jun  3 21:13:26 2017
 
 @author: teos
 """
+import logging
+import warnings
+from enum import Enum
 import numpy as np
 #from scipy.integrate import ode
 import matplotlib.pyplot as plt
 import pdb
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
+from Notifiers import SeriesNotifier, StatsNotifier, MinMaxNotifier, NotifierChain, NilNotify
+
 
 """ 
   C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
@@ -33,57 +38,37 @@ from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeK
 \end{equation}	
      """
 class HeartActionForce:
+    """
+    This class represents the periodic action of the heart.
+    Initially the heart is in phase with respiration, 
+    as both periods are commensurate (3:1) and initial phase of both is 0.
+    """
     def __init__(self):
-        self.Drive = 0.0
-        self.CoordinateNumber = 4
-        self.Amplitude = 1.0
-        self.StepWidth = 0.01
-        self.StepPeriod = 1.0
-        self.LastStepStart = 0.0
-    pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
+        self.Drive = 0.0 #Current value of heart drive.
+        self.CoordinateNumber = 4 #Coordinate number, to  which the state will be written
+        self.Amplitude = 1.0 #Kick amplitude
+        self.StepWidth = 0.01 #Kick time
+        self.StepPeriod = 1.0 #Heart period
+        self.LastStepStart = 0.0 #Time of last beat [s]
+        self.StepShift = 0.0 # Step shift [s] additionally shifts the heart action.
+        self.Notify = NilNotify
+    #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
     def ApplyDrive(self,data):
         isOpen = self.Drive == self.Amplitude
+        justOpened = False
         timeFromLastStepStart = data.t - self.LastStepStart
         if isOpen: # check if it is time to close
             if timeFromLastStepStart > self.StepWidth:
                 self.Drive = 0.0
         else: #check if it is time to open
             if timeFromLastStepStart == 0.0 or timeFromLastStepStart > self.StepPeriod: # initial kick
+                justOpened = True
                 self.Drive = self.Amplitude
                 self.LastStepStart = data.t       
         data[self.CoordinateNumber] = self.Drive
-"""        
-
-
-class RungeKutta45ConstStepIntegrator:
-
-    def __init__(self,param,function,data):
-        self.Force = 0.0
-        self.CoordinateNumber = 0
-        self.param = param
-        self.function = function
-        self.endTime = self.param.Tmin  + self.param.Tdelta * self.param.Npoints
-        self.data = data        
-        
-    def Reset(self,param):        
-        self.param = param
-        self.endTime = self.param.Tmin  + self.param.Tdelta * self.param.Npoints        
-        # create explicit Runge-Kutta integrator of order (4)5
-        self.r = ode(self.function).set_integrator('dopri5')
-        #pdb.set_trace()
-        self.r.set_initial_value(self.data.y, self.param.Tmin)
-        
-
-    def Iterate(self):
-        if not self.r.successful():
-            return False
-        self.data.t = self.data.t + self.param.Tdelta
-        print("Przed %s" % self.data.y)
-        self.data.y = self.r.integrate(self.data.t)
-        print("Po %s" % self.data.y)
-        return self.data.t < self.endTime
-"""        
-               
+        if justOpened:
+            self.Notify(data)
+                    
     
         # Place your FUNCTION HERE
 def kickedWindkesselRHS(t,y,Freturn,settings):
@@ -96,10 +81,7 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
             f[0] = x'= y[1]
             f[1] = x" = -100*x-2*x' = -100 *y[0] -2*y[1] + 10*sin 3*t
             You may enter your own equation here!"""
-            #pdb.set_trace()
-            #print(y)
-            #Freturn = y
-            #print(len(y))
+
             p_a, p_c, p_v, p_I,dummy = y
             
             if settings.openHeartFlow > 0.0: # //open the heart flow            
@@ -122,28 +104,28 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
             q_ca = settings.Zca * (p_c - p_I)
             if not heartFlowIsOpen:
                 q_ca = 0.0
-            q_vc = np.max(settings.Zvc * (p_v - p_c), 0.0)
+            q_vc = np.max((settings.Zvc * (p_v - p_c), 0.0))
             q_av = settings.Zav * (p_a - p_v)
             #print("Q:%f\t%f\t%f"%(q_ca,q_vc,q_av))
             Freturn[0] = (q_ca - q_av) / settings.Ca#; //p_a : //C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
             Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	
             Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
             #//non-autonomous
-            Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
+            Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(settings.breathingPhi0 + 2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
             #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
-            #y = Freturn
             #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
-            #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))
-            # pdb.set_trace()
-            
+            #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))            
             return Freturn
-        #//p_a = y[0]
-        #//p_c = y[1]
-        #//p_v = y[2]
-        #//p_I = y[3]
-        #//F(\varphi)=\varphi^{1.3}(\varphi-0.45)\frac{(1-\varphi)^3}{(1-0.8)^3+(1-\varphi)^3}
+
     
 class KickedWindkesselModel:
+        class ModelVariable(Enum):
+            P_a = 1
+            P_c = 2
+            P_v = 3
+            P_I = 4
+            Heart_Drive = 5
+    
         class KickedWindkesselModelSettings:
  
             def __init__(self):            
@@ -169,6 +151,7 @@ class KickedWindkesselModel:
                 self.p_I0 = -4.0
                 self.p_I1 = 0.1 #2.0
                 self.breathingPeriod = 3.0
+                self.breathingPhi0 = 0.0
                 self.heartPhase = 0.0
                 #self.heartActionForce = NullDrivingForce()
                
@@ -177,53 +160,7 @@ class KickedWindkesselModel:
                 self.heartFlowBeginTime = -1
                 self.openHeartFlow = 1.0
             
-            """def __init__(self,settings):   
-                self.lastHeartBeatTime = 0.0;
-                self.lastDiastolicBp = 0.0;
-                self.lastSystolicBp = 0.0;
-            
-                #bp
-                #Rav=0.9;%th(16);%1
-                #Rbv=0.005;%0.0005;%0.01;%0.01;%0.01;%th(20);%0.01
-                #Rba=0.006;%0.0029;%0.0029;%0.003;%th(15);%0.006
 
-                #Cb=th(7);%4.3
-                #Ca=th(3);%1.6
-                #Cv=th(4);%100
-                self.Ca = 1.6
-                self.Cc = 4.3
-                self.Cv = 100.0
-                self.Zca = 1 / 0.006
-                self.Zav = 1 / 0.9
-                self.Zvc = 1 / 0.005
-                #breathing
-                self.p_I0 = -4.0
-                self.p_I1 = 0.1
-                self.breathingPeriod = 3.0
-                self.heartPhase = 0.0
-              
-                self.heartFlowTimespan = 0.01#;//0.1 sec
-                self.throwAmplitudeDeathException = False
-                self.heartFlowBeginTime = -1
-                self.openHeartFlow = 0.0
-                
-                self.breathingPeriod = settings.breathingPeriod
-                self.Ca = settings.Ca
-                self.Cc = settings.Cc
-                self.Cv = settings.Cv
-                self.heartPhase = settings.heartPhase
-                self.openHeartFlow = settings.openHeartFlow
-                self.p_I0 = settings.p_I0
-                self.p_I1 = settings.p_I1
-                self.Zav = settings.Zav
-                self.Zca = settings.Zca
-                self.Zvc = settings.Zvc
-                self.throwAmplitudeDeathException = settings.throwAmplitudeDeathException
-                self.heartFlowBeginTime = settings.heartFlowBeginTime
-                self.heartFlowTimespan = settings.heartFlowTimespan
-                self.heartActionForce = settings.heartActionForce"""
-
-            
 
         def phaseEfectivenessCurve(phi):        
             aux1 = np.power(1 - phi, 3.0)
@@ -241,7 +178,7 @@ class KickedWindkesselModel:
             self.param.dT = 0.01#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
             self.param.Tmin = 0.0#                         //startpoint
             self.param.Npoints = 10000#
-            self.data = RungeKutta45IntegratorData(self.param)
+            self.data = RungeKutta45IntegratorData(self.param.dimension,self.param.dT)
             #//initialize
             self.data[0] = 90.0#90.0#;//P(2) = 90;%Pa 90
             self.data[1] = 35.0#;//P(1) = 35;%25;%95;%Pb
@@ -256,7 +193,7 @@ class KickedWindkesselModel:
 
             self.integrator.Reset(self.param)
             self.Notify(self.data)
-            print("Iterating from T0=0.0 to Tmax=%f, dT=%f, npoints=%d" % (self.integrator.Tmax(),self.integrator.param.dT,self.integrator.param.Npoints))
+            logging.info("Iterating from T0=0.0 to Tmax=%f, dT=%f, npoints=%d" % (self.integrator.Tmax(),self.integrator.param.dT,self.integrator.param.Npoints))
             while True:            
                 self.settings.heartActionForce.ApplyDrive(self.data)                
                 self.settings.openHeartFlow = self.settings.heartActionForce.Drive
@@ -266,7 +203,7 @@ class KickedWindkesselModel:
                     abc = 1
                 
                 if not self.integrator.Iterate(self.settings):
-                    print("Iterations completed.")
+                    logging.info("Iterations completed.")
                     break
                 t = self.data.t
                 p_I = self.data[3]
@@ -286,73 +223,18 @@ class KickedWindkesselModel:
 def NotifyPlainPrint(data):
     print("NPP:"+str(data))
 
-class SeriesNotifier:
-    def __init__(self,param):
-        self.param = param
-        self.states = np.zeros((param.Npoints+1,param.dimension+1))# all + time
-        self.statesIterator = 0            
-
-    def Notify(self,data):
-        self.states[self.statesIterator,0] = data.t
-        for ii in range(self.param.dimension):                    
-            self.states[self.statesIterator,ii+1] = data.y[ii]
-        self.statesIterator = self.statesIterator+1
-    def PlotSeries(self,rangeOfVars,fileName = None):
-        t = self.states[:,0]
-        fig = plt.figure()
-        for varNumber in rangeOfVars:         
-            x = self.states[:,varNumber]        
-            plt.plot(t,x)
-        if fileName:
-            plt.savefig(fileName)
-        else:
-            plt.show()
-
-class StatsNotifier:
-    def __init__(self,param):
-        self.param = param
-        self.sumValues = np.zeros(param.dimension)
-        self.sumSquares = np.zeros(param.dimension)
-        self.statesIterator = 0            
-
-    def Notify(self,data):
-        for ii in range(self.param.dimension):                    
-            self.sumValues[ii] = self.sumValues[ii] + data.y[ii]
-            self.sumSquares[ii] = self.sumSquares[ii] + (data.y[ii] * data.y[ii])
-        self.statesIterator = self.statesIterator+1
-    def GetStats(self):
-        """
-        Sensitive to catrastrophic cancellation.
-        """
-        AV = np.zeros(self.param.dimension)
-        SD = np.zeros(self.param.dimension)
-        for ii in range(self.param.dimension):                    
-            AV[ii] = (1.0 * self.sumValues[ii] / self.statesIterator)
-            SD[ii] = np.sqrt((1.0 * self.sumSquares[ii] / self.statesIterator) - AV[ii]*AV[ii])
-        return AV,SD
-
-
-class NotifierChain:
-    def __init__(self,notifiers = None):
-        self.notifiers = []
-        if notifiers:
-            for notifier in notifiers:
-                self.RegisterNotifier(notifier)        
-    def RegisterNotifier(self,notifier):
-        self.notifiers.append(notifier)
-    def Notify(self,data):
-        for notifier in self.notifiers:
-            notifier.Notify(data)
 
 def DummyPrint(data):
     pass
-if __name__ == "__main__":
+
+
+def BasicProcessor():
     settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
     settings.heartActionForce = HeartActionForce()
     model = KickedWindkesselModel(settings)
     model.param.Npoints = 1000
-    series = SeriesNotifier(model.param)
-    stats = StatsNotifier(model.param)
+    series = SeriesNotifier(model.param.dimension,model.param.Npoints+1)
+    stats = StatsNotifier(model.param.dimension)
     chain = NotifierChain((series,stats))
     #model.Notify = NotifyPlainPrint
     #model.Notify = series.NotifyToSeries
@@ -364,4 +246,52 @@ if __name__ == "__main__":
     print(SD)
     #series.PlotSeries((4,))
 
+def PhaseShiftProcessor():
+    stepShiftLinspace = np.linspace(0,1.25,10)
+    stepShiftLinspace = np.linspace(0,2.0*np.pi,40)
+    Sav = []
+    Ssd = []
+    Dav = []
+    Dsd = []
+    for stepShift in stepShiftLinspace:
+        settings = KickedWindkesselModel.KickedWindkesselModelSettings()
+        settings.breathingPhi0 = stepShift
+        settings.heartActionForce = HeartActionForce()
+        settings.heartActionForce.StepShift = stepShift
+        model = KickedWindkesselModel(settings)
+        model.param.Npoints = 1000
+        seriesS = SeriesNotifier(1,model.param.Npoints+1)
+        statsS = StatsNotifier(1)
+        seriesD = SeriesNotifier(1,model.param.Npoints+1)
+        statsD = StatsNotifier(1)
+
+        mmNotifier = MinMaxNotifier(0)
+        chainS = NotifierChain((seriesS,statsS)) #systolic
+        chainD = NotifierChain((seriesD,statsD)) #diastolic
+        mmNotifier.MinNotifier = chainD.Notify
+        mmNotifier.MaxNotifier = chainS.Notify        
+        model.Notify = mmNotifier.Notify
+        
+        model.IterateToNotifiers()    
+        
+        maxTime,maxValue,maxIterator = mmNotifier.getMaxima()
+        minTime,minValue,minIterator = mmNotifier.getMinima()
+        
+        SAV,SSD = statsS.GetStats()
+        DAV,DSD = statsD.GetStats()
+        #series.PlotSeries((1,2,3,4),"overview_%.2f.png"%settings.heartActionForce.StepShift)
+        Sav.append(SAV[0])
+        Ssd.append(SSD[0])
+        Dav.append(DAV[0])
+        Dsd.append(DSD[0])
+        print("%f\t%f\t%f\t%f\t%f"%(settings.heartActionForce.StepShift,SAV[0],SSD[0],DAV[0],DSD[0]))
+    fig = plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(stepShiftLinspace,Ssd)
+    plt.subplot(2,1,2)
+    plt.plot(stepShiftLinspace,Dsd)
+    plt.savefig("averages.png")
+    plt.show()
+if __name__ == "__main__":
+    PhaseShiftProcessor()
 
