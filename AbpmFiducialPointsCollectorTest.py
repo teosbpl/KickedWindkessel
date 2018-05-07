@@ -6,7 +6,10 @@ Created on Mon May  7 16:24:29 2018
 """
 import logging
 import unittest
-from Notifiers import MinMaxNotifier, NotifierChain
+import pdb
+import matplotlib.pyplot as plt
+import numpy as np
+from Notifiers import MinMaxNotifier, NotifierChain, SeriesNotifier
 from AbpmFiducialPointsCollector import AbpmFiducialPointsCollector
 from KickedWindkesselModel import KickedWindkesselModel, HeartActionForce
 
@@ -17,17 +20,28 @@ class AbpmFiducialPointsCollectorTest(unittest.TestCase):
             model = KickedWindkesselModel(settings)
             model.param.Npoints = 1000
             
-            collector = AbpmFiducialPointsCollector()
+            collector = AbpmFiducialPointsCollector(0)#ABPM = 0. Other compartments have different numbers.
             settings.heartActionForce.Notify = collector.HeartOpenNotifier
             mmNotifier = MinMaxNotifier(0)
             mmNotifier.MinNotifier = collector.AbpmMinNotifier
             mmNotifier.MaxNotifier = collector.AbpmMaxNotifier
+            seriesNotifier = SeriesNotifier(model.param.dimension,model.param.Npoints)
             
-            chain = NotifierChain((mmNotifier,collector))
+            chain = NotifierChain((mmNotifier,collector,seriesNotifier))
             model.Notify = chain.Notify
             
-            model.IterateToNotifiers()    
-    
+            model.IterateToNotifiers()
+            allValues = seriesNotifier.GetVar(0)
+            allTimes = np.linspace(0.0,model.param.dT*model.param.Npoints,model.param.Npoints)
+            allItems = collector.GetFiducialPointsList()
+            fig = plt.figure()
+            #plt.ylim(-12.0,12.0)
+            plt.plot(allTimes,allValues)        
+            #pdb.set_trace()
+            plt.plot(allItems[:,0],allItems[:,1],"ro")
+            plt.plot(allItems[:,0],allItems[:,2],"go")
+            plt.plot(allItems[:,0],allItems[:,3],"bo")
+            plt.show()
             
 #==============================================================================
 #         data = RungeKutta45IntegratorData(2,0.0)
