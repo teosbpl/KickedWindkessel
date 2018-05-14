@@ -38,9 +38,9 @@ class AbpmFiducialPointsCollectorTest(unittest.TestCase):
             #plt.ylim(-12.0,12.0)
             plt.plot(allTimes,allValues)        
             #pdb.set_trace()
-            plt.plot(allItems[:,0],allItems[:,1],"ro")
-            plt.plot(allItems[:,0],allItems[:,2],"go")
-            plt.plot(allItems[:,0],allItems[:,3],"bo")
+            plt.plot(allItems[:,0],allItems[:,1],"ro") # systolic
+            plt.plot(allItems[:,0],allItems[:,2],"go") # diastolic
+            plt.plot(allItems[:,0],allItems[:,3],"bo") # mean
             plt.show()
             
 #==============================================================================

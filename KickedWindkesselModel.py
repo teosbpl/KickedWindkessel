@@ -12,7 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
-from Notifiers import SeriesNotifier, StatsNotifier, MinMaxNotifier, NotifierChain, NilNotify
+from Notifiers import SeriesNotifier, StatsNotifier, NotifierChain
+from HeartActionForce import RectangularHeartActionForce
 
 
 """ 
@@ -36,39 +37,7 @@ from Notifiers import SeriesNotifier, StatsNotifier, MinMaxNotifier, NotifierCha
 \begin{equation}	
 	F(\varphi)=\varphi^{1.3}(\varphi-0.45)\frac{(1-\varphi)^3}{(1-0.8)^3+(1-\varphi)^3}
 \end{equation}	
-     """
-class HeartActionForce:
-    """
-    This class represents the periodic action of the heart.
-    Initially the heart is in phase with respiration, 
-    as both periods are commensurate (3:1) and initial phase of both is 0.
-    """
-    def __init__(self):
-        self.Drive = 0.0 #Current value of heart drive.
-        self.CoordinateNumber = 4 #Coordinate number, to  which the state will be written
-        self.Amplitude = 1.0 #Kick amplitude
-        self.StepWidth = 0.01 #Kick time
-        self.StepPeriod = 1.0 #Heart period
-        self.LastStepStart = 0.0 #Time of last beat [s]
-        self.StepShift = 0.0 # Step shift [s] additionally shifts the heart action.
-        self.Notify = NilNotify
-    #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
-    def ApplyDrive(self,data):
-        isOpen = self.Drive == self.Amplitude
-        justOpened = False
-        timeFromLastStepStart = data.t - self.LastStepStart
-        if isOpen: # check if it is time to close
-            if timeFromLastStepStart > self.StepWidth:
-                self.Drive = 0.0
-        else: #check if it is time to open
-            if timeFromLastStepStart == 0.0 or timeFromLastStepStart > self.StepPeriod: # initial kick
-                justOpened = True
-                self.Drive = self.Amplitude
-                self.LastStepStart = data.t       
-        data[self.CoordinateNumber] = self.Drive
-        if justOpened:
-            self.Notify(data)
-                    
+     """                   
     
         # Place your FUNCTION HERE
 def kickedWindkesselRHS(t,y,Freturn,settings):
@@ -159,8 +128,6 @@ class KickedWindkesselModel:
                 self.throwAmplitudeDeathException = False
                 self.heartFlowBeginTime = -1
                 self.openHeartFlow = 1.0
-            
-
 
         def phaseEfectivenessCurve(phi):        
             aux1 = np.power(1 - phi, 3.0)
@@ -230,7 +197,7 @@ def DummyPrint(data):
 
 def BasicProcessor():
     settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
-    settings.heartActionForce = HeartActionForce()
+    settings.heartActionForce = RectangularHeartActionForce()
     model = KickedWindkesselModel(settings)
     model.param.Npoints = 1000
     series = SeriesNotifier(model.param.dimension,model.param.Npoints+1)
@@ -246,57 +213,6 @@ def BasicProcessor():
     print(SD)
     #series.PlotSeries((4,))
 
-def PhaseShiftProcessor():
-    przerobić phase shift processor żeby korzystał z FiducialPoints
-    
-    przerobić też żeby miał nomenklaturę zgodną z publikacją i żeby wprowadzał opóźnienie w kick a nie
-    w oddechu
-    dorobić pętlę w funkcji amplitudy, ale hmm gdzie tu jest amplituda?
-    stepShiftLinspace = np.linspace(0,1.25,10)
-    stepShiftLinspace = np.linspace(0,2.0*np.pi,40)
-    Sav = []
-    Ssd = []
-    Dav = []
-    Dsd = []
-    for stepShift in stepShiftLinspace:
-        settings = KickedWindkesselModel.KickedWindkesselModelSettings()
-        settings.breathingPhi0 = stepShift
-        settings.heartActionForce = HeartActionForce()
-        settings.heartActionForce.StepShift = stepShift
-        model = KickedWindkesselModel(settings)
-        model.param.Npoints = 1000
-        seriesS = SeriesNotifier(1,model.param.Npoints+1)
-        statsS = StatsNotifier(1)
-        seriesD = SeriesNotifier(1,model.param.Npoints+1)
-        statsD = StatsNotifier(1)
-
-        mmNotifier = MinMaxNotifier(0)
-        chainS = NotifierChain((seriesS,statsS)) #systolic
-        chainD = NotifierChain((seriesD,statsD)) #diastolic
-        mmNotifier.MinNotifier = chainD.Notify
-        mmNotifier.MaxNotifier = chainS.Notify        
-        model.Notify = mmNotifier.Notify
-        
-        model.IterateToNotifiers()    
-        
-        maxTime,maxValue,maxIterator = mmNotifier.getMaxima()
-        minTime,minValue,minIterator = mmNotifier.getMinima()
-        
-        SAV,SSD = statsS.GetStats()
-        DAV,DSD = statsD.GetStats()
-        #series.PlotSeries((1,2,3,4),"overview_%.2f.png"%settings.heartActionForce.StepShift)
-        Sav.append(SAV[0])
-        Ssd.append(SSD[0])
-        Dav.append(DAV[0])
-        Dsd.append(DSD[0])
-        print("%f\t%f\t%f\t%f\t%f"%(settings.heartActionForce.StepShift,SAV[0],SSD[0],DAV[0],DSD[0]))
-    fig = plt.figure()
-    plt.subplot(2,1,1)
-    plt.plot(stepShiftLinspace,Ssd)
-    plt.subplot(2,1,2)
-    plt.plot(stepShiftLinspace,Dsd)
-    plt.savefig("averages.png")
-    plt.show()
 if __name__ == "__main__":
-    PhaseShiftProcessor()
+    BasicProcessor()
 
