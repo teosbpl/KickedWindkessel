@@ -47,7 +47,9 @@ class HeartActionForceTest(unittest.TestCase):
         plt.subplot(2,1,2)
         plt.plot(allTimes,allValues4) 
         plt.savefig("test_RectangularHeartActionForce.png")
-        plt.show()
+        #plt.show()
+    def test_RespiratoryDelayedSmearedHeartActionForce(self):
+        print("Szykuj sie stary")
 def main():
         
         logging.basicConfig(level=logging.DEBUG)    

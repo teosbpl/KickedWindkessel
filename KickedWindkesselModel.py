@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
-from Notifiers import SeriesNotifier, StatsNotifier, NotifierChain
+from Notifiers import SeriesNotifier, StatsNotifier, NotifierChain, NilNotify
 from HeartActionForce import RectangularHeartActionForce
 
 
@@ -54,24 +54,18 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
             p_a, p_c, p_v, p_I,dummy = y
             
             if settings.openHeartFlow > 0.0: # //open the heart flow            
-                if settings.heartFlowBeginTime == -1:                
-                    settings.lastDiastolicBp = p_a #; //register diastolic on opening.                
                 settings.heartFlowBeginTime = t
-                settings.lastHeartBeatTime = t
                                 
-
             heartFlowIsOpen = (settings.heartFlowBeginTime >= 0.0)#;//ok, it holds the real time: the flow is open.
             #//check if it should not be closed
             openTime = t - settings.heartFlowBeginTime
             if heartFlowIsOpen and (openTime > settings.heartFlowTimespan):
                 settings.heartFlowBeginTime = -1.0#; //self parameter is set to current time when flow opens. When the flow is closed, it is set to a negative value.
-                #//register systolic on closing.
-                #//settings.lastSystolicBp = p_a; //close the heart: register systolic now
                 heartFlowIsOpen = False
             
             #//Fs = 125; time step = 1/125 s
             q_ca = settings.Zca * (p_c - p_I)
-            if not heartFlowIsOpen:
+            if not heartFlowIsOpen: # all or nothing
                 q_ca = 0.0
             q_vc = np.max((settings.Zvc * (p_v - p_c), 0.0))
             q_av = settings.Zav * (p_a - p_v)
@@ -94,14 +88,15 @@ class KickedWindkesselModel:
             P_v = 3
             P_I = 4
             Heart_Drive = 5
-    
+
+        def phaseEfectivenessCurve(phi):        
+            aux1 = np.power(1 - phi, 3.0)
+            value = np.power(phi, 1.3) * (phi - 0.45) * (aux1 / ((np.power(1 - 0.8, 3.0)) + aux1));
+            return value    
+
         class KickedWindkesselModelSettings:
  
             def __init__(self):            
-                self.lastHeartBeatTime = 0.0;
-                self.lastDiastolicBp = 0.0;
-                self.lastSystolicBp = 0.0;
-            
                 #bp
                 #Rav=0.9;%th(16);%1
                 #Rbv=0.005;%0.0005;%0.01;%0.01;%0.01;%th(20);%0.01
@@ -128,11 +123,6 @@ class KickedWindkesselModel:
                 self.throwAmplitudeDeathException = False
                 self.heartFlowBeginTime = -1
                 self.openHeartFlow = 1.0
-
-        def phaseEfectivenessCurve(phi):        
-            aux1 = np.power(1 - phi, 3.0)
-            value = np.power(phi, 1.3) * (phi - 0.45) * (aux1 / ((np.power(1 - 0.8, 3.0)) + aux1));
-            return value
         
         @property
         def ModelDimension(self):
@@ -166,8 +156,6 @@ class KickedWindkesselModel:
                 self.settings.openHeartFlow = self.settings.heartActionForce.Drive
                 isHeartOpen = (self.settings.heartFlowBeginTime != -1.0)
                 self.settings.sineOfBreathingPhase = np.sin(2 * np.pi * self.data.t / self.settings.breathingPeriod)
-                if isHeartOpen:                
-                    abc = 1
                 
                 if not self.integrator.Iterate(self.settings):
                     logging.info("Iterations completed.")
@@ -176,15 +164,6 @@ class KickedWindkesselModel:
                 p_I = self.data[3]
                 self.data[4] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * t / self.settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
                 self.Notify(self.data)
-#                for i in range(len(self.data.y)):
-#                    if self.data.y[i] < 0:
-#                        self.data.y[i] = 0
-#                isHeartClosedAfter = (self.settings.heartFlowBeginTime == -1.0)
-#                if  isHeartOpen and isHeartClosedAfter: #//it has just closed.                
-#                    self.settings.lastSystolicBp = self.data[0]                
-#                if self.settings.throwAmplitudeDeathException:
-#                    if self.data[0] < 0.0:
-#                        raise Exception("Amplitude death occurred")
                 
 
 def NotifyPlainPrint(data):
