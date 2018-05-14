@@ -247,6 +247,11 @@ def BasicProcessor():
     #series.PlotSeries((4,))
 
 def PhaseShiftProcessor():
+    przerobić phase shift processor żeby korzystał z FiducialPoints
+    
+    przerobić też żeby miał nomenklaturę zgodną z publikacją i żeby wprowadzał opóźnienie w kick a nie
+    w oddechu
+    dorobić pętlę w funkcji amplitudy, ale hmm gdzie tu jest amplituda?
     stepShiftLinspace = np.linspace(0,1.25,10)
     stepShiftLinspace = np.linspace(0,2.0*np.pi,40)
     Sav = []
