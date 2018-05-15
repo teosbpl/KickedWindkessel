@@ -8,7 +8,7 @@ import logging
 import unittest
 import numpy as np
 import matplotlib.pyplot as plt
-from Notifiers import SeriesNotifier, FiringTimesNotifier
+from Notifiers import SeriesNotifier
 from HeartActionForce import RectangularHeartActionForce, RespiratoryDelayedSmearedHeartActionForce
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
 
@@ -16,6 +16,13 @@ from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
 
 
 class HeartActionForceTest(unittest.TestCase):
+    """
+    This class tests all features of a complicated IntegrateAndFire class.
+    1. Unperturbed rate.
+    2. Perturbed rate which visually responds to stimulations.
+    3. Perturbed rate which is visually coupled to a different rhythm.
+    4. Perturbed rate which may be plugged into Kicked Windkessel model.
+    """
 
     def test_RectangularHeartActionForce(self):
         data = RungeKutta45IntegratorData(5,0.0)

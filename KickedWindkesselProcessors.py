@@ -90,14 +90,19 @@ def PhaseShiftProcessor():
     #pdb.set_trace()
     ylim = copy.deepcopy(ax.get_ylim())# keep original limits.\
     xlim = copy.deepcopy(ax.get_xlim())# keep original limits.\    
-    ax.fill([0,0,1,1,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
-    offsetOfHalf = len(Msd)/2
-    rightHalfMsd = np.array(Msd[offsetOfHalf:])
-    print(rightHalfMsd)
-    rightLargerThan100 = np.where(rightHalfMsd>100)[0][0]
-    rightHatchedEdge = stepShiftLinspace[offsetOfHalf+rightLargerThan100]
-    print(rightHatchedEdge)
-    ax.fill([rightHatchedEdge,rightHatchedEdge,xlim[1],xlim[1],rightHatchedEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+    
+    
+#==============================================================================
+#     ax.fill([0,0,1,1,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+#     offsetOfHalf = len(Msd)/2
+#     rightHalfMsd = np.array(Msd[offsetOfHalf:])
+#     print(rightHalfMsd)
+#     rightLargerThan100 = np.where(rightHalfMsd>100)[0][0]
+#     rightHatchedEdge = stepShiftLinspace[offsetOfHalf+rightLargerThan100]
+#     print(rightHatchedEdge)
+#     ax.fill([rightHatchedEdge,rightHatchedEdge,xlim[1],xlim[1],rightHatchedEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+# 
+#==============================================================================
     #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    

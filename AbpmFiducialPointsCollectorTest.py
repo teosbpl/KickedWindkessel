@@ -11,14 +11,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 from Notifiers import MinMaxNotifier, NotifierChain, SeriesNotifier
 from AbpmFiducialPointsCollector import AbpmFiducialPointsCollector
-from KickedWindkesselModel import KickedWindkesselModel, HeartActionForce
+from KickedWindkesselModel import KickedWindkesselModel
+from HeartActionForce import RectangularHeartActionForce, RandomHeartActionForce
 
 class AbpmFiducialPointsCollectorTest(unittest.TestCase):
-        def test_fiducial_points_collector(self): 
+        def test_fiducial_points_collector_random(self): 
             settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
-            settings.heartActionForce = HeartActionForce()
+            settings.heartActionForce = RandomHeartActionForce()
             model = KickedWindkesselModel(settings)
-            model.param.Npoints = 1000
+            model.param.Npoints = 10000
+            
+            collector = AbpmFiducialPointsCollector(0)#ABPM = 0. Other compartments have different numbers.
+            settings.heartActionForce.Notify = collector.HeartOpenNotifier
+            mmNotifier = MinMaxNotifier(0)
+            mmNotifier.MinNotifier = collector.AbpmMinNotifier
+            mmNotifier.MaxNotifier = collector.AbpmMaxNotifier
+            seriesNotifier = SeriesNotifier(model.param.dimension,model.param.Npoints)
+            
+            chain = NotifierChain((mmNotifier,collector,seriesNotifier))
+            model.Notify = chain.Notify
+            
+            model.IterateToNotifiers()
+            allValues = seriesNotifier.GetVar(0)
+            allTimes = np.linspace(0.0,model.param.dT*model.param.Npoints,model.param.Npoints)
+            allItems = collector.GetFiducialPointsList()
+            #fig = plt.figure()
+            #plt.ylim(-12.0,12.0)
+            plt.plot(allTimes,allValues)        
+            #pdb.set_trace()
+            plt.plot(allItems[:,0],allItems[:,1],"ro") # systolic
+            plt.plot(allItems[:,0],allItems[:,2],"go") # diastolic
+            plt.plot(allItems[:,0],allItems[:,3],"bo") # mean
+            plt.savefig("test_fiducial_points_collector_random.png")
+            logging.warning("Result in test_fiducial_points_collector_random.png")
+            #plt.show()
+            
+        def test_fiducial_points_collector_rect(self): 
+            settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
+            settings.heartActionForce = RectangularHeartActionForce()
+            model = KickedWindkesselModel(settings)
+            model.param.Npoints = 10000
             
             collector = AbpmFiducialPointsCollector(0)#ABPM = 0. Other compartments have different numbers.
             settings.heartActionForce.Notify = collector.HeartOpenNotifier
@@ -41,8 +73,10 @@ class AbpmFiducialPointsCollectorTest(unittest.TestCase):
             plt.plot(allItems[:,0],allItems[:,1],"ro") # systolic
             plt.plot(allItems[:,0],allItems[:,2],"go") # diastolic
             plt.plot(allItems[:,0],allItems[:,3],"bo") # mean
-            plt.show()
-            
+            plt.savefig("test_fiducial_points_collector_rect.png")
+            logging.warning("Result in test_fiducial_points_collector_rect.png")
+            #plt.show()
+
 #==============================================================================
 #         data = RungeKutta45IntegratorData(2,0.0)
 #         mmNotifier = MinMaxNotifier(0)#first variable        
@@ -69,7 +103,7 @@ class AbpmFiducialPointsCollectorTest(unittest.TestCase):
 #==============================================================================
 
 def main():
-        logging.basicConfig(level=logging.INFO)    
+        logging.basicConfig(level=logging.WARNING)    
         unittest.main()
 
 if __name__ == "__main__":

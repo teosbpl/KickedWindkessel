@@ -148,4 +148,9 @@ class NotifierChain:
         for notifier in self.notifiers:
             notifier.Notify(data)
 
-   
+class FiringTimesNotifier:
+    def __init__(self):
+        self.firingTimes = []
+    def Notify(self,data):
+        self.firingTimes.append(data.t)
+        print(self.firingTimes)

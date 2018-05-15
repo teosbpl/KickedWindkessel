@@ -39,46 +39,47 @@ from HeartActionForce import RectangularHeartActionForce
 \end{equation}	
      """                   
     
-        # Place your FUNCTION HERE
 def kickedWindkesselRHS(t,y,Freturn,settings):
-            """definition of equation-example
-            damped harmonic oscillator with harmonic driver
-            x" + 100*x + 2*x'= 10*sin 3*t
-            we define y[0] = x, y[1] = x'
-            You need to transform the second order differential equation
-            in a system of two differenti5al equatios of first order:
-            f[0] = x'= y[1]
-            f[1] = x" = -100*x-2*x' = -100 *y[0] -2*y[1] + 10*sin 3*t
-            You may enter your own equation here!"""
+    """
+    RHS of kicked Windkessel model.
+    It still relies on external parameters and changes their value:
+    settings.heartFlowBeginTime.
+    Should be a non-autonomous part of model variables
+    As both phases should.    
+    """
 
-            p_a, p_c, p_v, p_I,dummy = y
-            
-            if settings.openHeartFlow > 0.0: # //open the heart flow            
-                settings.heartFlowBeginTime = t
-                                
-            heartFlowIsOpen = (settings.heartFlowBeginTime >= 0.0)#;//ok, it holds the real time: the flow is open.
-            #//check if it should not be closed
-            openTime = t - settings.heartFlowBeginTime
-            if heartFlowIsOpen and (openTime > settings.heartFlowTimespan):
-                settings.heartFlowBeginTime = -1.0#; //self parameter is set to current time when flow opens. When the flow is closed, it is set to a negative value.
-                heartFlowIsOpen = False
-            
-            #//Fs = 125; time step = 1/125 s
-            q_ca = settings.Zca * (p_c - p_I)
-            if not heartFlowIsOpen: # all or nothing
-                q_ca = 0.0
-            q_vc = np.max((settings.Zvc * (p_v - p_c), 0.0))
-            q_av = settings.Zav * (p_a - p_v)
-            #print("Q:%f\t%f\t%f"%(q_ca,q_vc,q_av))
-            Freturn[0] = (q_ca - q_av) / settings.Ca#; //p_a : //C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
-            Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	
-            Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
-            #//non-autonomous
-            Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(settings.breathingPhi0 + 2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
-            #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
-            #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
-            #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))            
-            return Freturn
+    p_a, p_c, p_v, p_I, startKick = y
+    # If the Windkessel is kicked start the heart flow
+    #the heart flow is active in a rectangle:
+    #from heartFlowBeginTime for heartFlowTimespan
+    if startKick > 0.0:     
+        settings.heartFlowBeginTime = t
+    # Positive heartFlowBeginTime = open flow                        
+    heartFlowIsOpen = (settings.heartFlowBeginTime >= 0.0)
+    # Check closing criteria.
+    if heartFlowIsOpen and (t > (settings.heartFlowTimespan + settings.heartFlowBeginTime)):
+        # by convenction: negative heartFlowBeginTime means, that
+        #there is no heart flow.
+        settings.heartFlowBeginTime = -1.0
+        heartFlowIsOpen = False
+    
+    #//Fs = 125; time step = 1/125 s
+    q_ca = settings.Zca * (p_c - p_I)
+    if not heartFlowIsOpen: # all or nothing
+        q_ca = 0.0
+    q_vc = np.max((settings.Zvc * (p_v - p_c), 0.0))
+    q_av = settings.Zav * (p_a - p_v)
+    #print("Q:%f\t%f\t%f"%(q_ca,q_vc,q_av))
+    Freturn[0] = (q_ca - q_av) / settings.Ca#; //p_a : //C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
+    Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	
+    Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
+    #//non-autonomous
+    #to nie moze dzialac bo przeciez tu sie nie liczy wartosci zmiennej tylko RHS rownania.            
+    #Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(settings.breathingPhi0 + 2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
+    #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
+    #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
+    #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))            
+    return Freturn
 
     
 class KickedWindkesselModel:
@@ -87,12 +88,7 @@ class KickedWindkesselModel:
             P_c = 2
             P_v = 3
             P_I = 4
-            Heart_Drive = 5
-
-        def phaseEfectivenessCurve(phi):        
-            aux1 = np.power(1 - phi, 3.0)
-            value = np.power(phi, 1.3) * (phi - 0.45) * (aux1 / ((np.power(1 - 0.8, 3.0)) + aux1));
-            return value    
+            Heart_Drive = 5 #         
 
         class KickedWindkesselModelSettings:
  
@@ -119,10 +115,8 @@ class KickedWindkesselModel:
                 self.heartPhase = 0.0
                 #self.heartActionForce = NullDrivingForce()
                
-                self.heartFlowTimespan = 0.01#;//0.1 sec
-                self.throwAmplitudeDeathException = False
+                self.heartFlowTimespan = 0.01#;//0.1 sec                
                 self.heartFlowBeginTime = -1
-                self.openHeartFlow = 1.0
         
         @property
         def ModelDimension(self):
@@ -140,29 +134,33 @@ class KickedWindkesselModel:
             self.data[0] = 90.0#90.0#;//P(2) = 90;%Pa 90
             self.data[1] = 35.0#;//P(1) = 35;%25;%95;%Pb
             self.data[2] = 45.0#;//P(3) = 45;%35;%70;%Pv % bylo 30 i zle asymtotyczni    
-            self.data[3] = settings.p_I0#;
+            self.data[3] = settings.p_I0#; 
             self.data[4] = 0#;
             
             self.integrator = RungeKutta45ConstStepIntegrator(self.param,self.data,kickedWindkesselRHS)#,lambda t,y: f(t,y,self.settings),self.data)
                  
 
         def IterateToNotifiers(self):
-
+            """
+            Iterate to notifiers is a main interation loop.
+            In this main loop all non-autonomous parameters are set 
+            to prevent multiple execution of code in kickedWindkesselRHS
+            which is called several times during Runge-Kutta integration.
+            The heart action force sets 4-th variable to a nonzero value
+            if a kick has to be initiated.
+            """
             self.integrator.Reset(self.param)
             self.Notify(self.data)
             logging.info("Iterating from T0=0.0 to Tmax=%f, dT=%f, npoints=%d" % (self.integrator.Tmax(),self.integrator.param.dT,self.integrator.param.Npoints))
-            while True:            
+            while True:
                 self.settings.heartActionForce.ApplyDrive(self.data)                
-                self.settings.openHeartFlow = self.settings.heartActionForce.Drive
-                isHeartOpen = (self.settings.heartFlowBeginTime != -1.0)
-                self.settings.sineOfBreathingPhase = np.sin(2 * np.pi * self.data.t / self.settings.breathingPeriod)
+                self.data[3] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * self.data.t / self.settings.breathingPeriod))#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
+                #self.settings.sineOfBreathingPhase = np.sin(2 * np.pi * self.data.t / self.settings.breathingPeriod)
                 
                 if not self.integrator.Iterate(self.settings):
                     logging.info("Iterations completed.")
                     break
-                t = self.data.t
-                p_I = self.data[3]
-                self.data[4] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * t / self.settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
+                
                 self.Notify(self.data)
                 
 
@@ -180,17 +178,11 @@ def BasicProcessor():
     model = KickedWindkesselModel(settings)
     model.param.Npoints = 1000
     series = SeriesNotifier(model.param.dimension,model.param.Npoints+1)
-    stats = StatsNotifier(model.param.dimension)
-    chain = NotifierChain((series,stats))
-    #model.Notify = NotifyPlainPrint
-    #model.Notify = series.NotifyToSeries
-    model.Notify = chain.Notify
+    model.Notify = series.Notify
     model.IterateToNotifiers()
-    series.PlotSeries((1,2,3,4),"overview.png")
-    AV,SD = stats.GetStats()
-    print(AV)
-    print(SD)
-    #series.PlotSeries((4,))
+    fname = "overview.png"
+    series.PlotSeries((1,2,3,4),fname)
+    print("Plat data in %s" % fname)
 
 if __name__ == "__main__":
     BasicProcessor()

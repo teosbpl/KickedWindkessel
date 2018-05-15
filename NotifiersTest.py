@@ -9,7 +9,9 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorParams, RungeKutta45ConstStepIntegrator, RungeKutta45IntegratorData
-from Notifiers import MinMaxNotifier, SeriesNotifier, NotifierChain
+from Notifiers import MinMaxNotifier, SeriesNotifier, NotifierChain, StatsNotifier
+from KickedWindkesselModel import KickedWindkesselModel
+from HeartActionForce import RectangularHeartActionForce
 
 
 class NotifiersTest(unittest.TestCase):
@@ -37,6 +39,18 @@ class NotifiersTest(unittest.TestCase):
         plt.plot(minTime,minValue,"bo")
         plt.plot(maxTime,maxValue,"r*")
         plt.show()
+    def test_stats_notifier(self):
+        settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
+        settings.heartActionForce = RectangularHeartActionForce()
+        model = KickedWindkesselModel(settings)
+        model.param.Npoints = 1000
+        stats = StatsNotifier(model.param.dimension)        
+        model.Notify = stats.Notify
+        model.IterateToNotifiers()
+        AV,SD = stats.GetStats()
+        print(AV)
+        print(SD)
+
 def main():
 
         logging.basicConfig(level=logging.DEBUG)    

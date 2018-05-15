@@ -27,12 +27,12 @@ class AbpmFiducialPointsCollector:
     def AbpmMinNotifier(self,data):
         self.lastMin = data.y[self.varNumber]
         self.lastMinTime = data.t
-        logging.info("In min notifier at %lf with %lf" % (data.t,self.lastMin))        
+        logging.debug("In min notifier at %lf with %lf" % (data.t,self.lastMin))        
         
     def AbpmMaxNotifier(self,data):
         self.lastMax = data.y[self.varNumber]
         self.lastMaxTime = data.t
-        logging.info("In max notifier at %lf with %lf" % (data.t,self.lastMax))        
+        logging.debug("In max notifier at %lf with %lf" % (data.t,self.lastMax))        
 
     def Finalize(self,data=None):
         if not self.lastMin:
@@ -47,7 +47,7 @@ class AbpmFiducialPointsCollector:
         _rr = t - self.lastHeartOpenTime
         _sbp = self.lastMax
         if self.lastMinTime < self.lastMaxTime:
-            logging.warning("Registering DBP which was before SBP and RR to next: all in one item.")
+            logging.debug("Registering DBP which was before SBP and RR to next: all in one item.")
         # I assume that HeartOpen is launched before MinNotifier, 
         #if it is launched before it carries the DBP which was before SBP            
         #otherwise MinNotifier carries DBP which is after SBP.
@@ -70,7 +70,7 @@ class AbpmFiducialPointsCollector:
         self.lastHeartOpenTime = t
         
     def HeartOpenNotifier(self,data):
-        logging.info("In heart notifier at %lf" % (data.t))        
+        logging.debug("In heart notifier at %lf" % (data.t))        
         #close everything that was collected so far.
         if self.meanAbpmSampleCounter > 0:
             self.Finalize(data)
