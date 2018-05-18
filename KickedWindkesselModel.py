@@ -58,7 +58,7 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
     heartFlowIsOpen = (settings.heartFlowBeginTime >= 0.0)
     # Check closing criteria.
     if heartFlowIsOpen and (t > (settings.heartFlowTimespan + settings.heartFlowBeginTime)):
-        # by convenction: negative heartFlowBeginTime means, that
+        # by convention: negative heartFlowBeginTime means, that
         #there is no heart flow.
         settings.heartFlowBeginTime = -1.0
         heartFlowIsOpen = False
@@ -73,7 +73,7 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
     Freturn[0] = (q_ca - q_av) / settings.Ca#; //p_a : //C_a{dp_a}/{dt}=\sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	- Z_{av}p_{av}
     Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)	
     Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
-    #//non-autonomous
+
     #to nie moze dzialac bo przeciez tu sie nie liczy wartosci zmiennej tylko RHS rownania.            
     #Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(settings.breathingPhi0 + 2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))                          
     #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))

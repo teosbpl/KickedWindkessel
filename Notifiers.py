@@ -153,4 +153,4 @@ class FiringTimesNotifier:
         self.firingTimes = []
     def Notify(self,data):
         self.firingTimes.append(data.t)
-        print(self.firingTimes)
+        logging.debug(self.firingTimes)

@@ -35,7 +35,7 @@ class AbpmFiducialPointsCollectorTest(unittest.TestCase):
             allValues = seriesNotifier.GetVar(0)
             allTimes = np.linspace(0.0,model.param.dT*model.param.Npoints,model.param.Npoints)
             allItems = collector.GetFiducialPointsList()
-            #fig = plt.figure()
+            fig = plt.figure()
             #plt.ylim(-12.0,12.0)
             plt.plot(allTimes,allValues)        
             #pdb.set_trace()

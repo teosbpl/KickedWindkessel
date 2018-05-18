@@ -37,28 +37,28 @@ class HeartActionForceTest(unittest.TestCase):
         allValues3 = seriesNotifier.GetVar(3)
         print("Firing times: %s" % str(fireNotifier.firingTimes))
         #fig = plt.figure()
-        plt.subplot(2,1,1)
+        plt.subplot(2, 1, 1)
         #plt.ylim(-12.0,12.0)
-        plt.plot(allTimes,allValues3)
-        plt.subplot(2,1,2)
-        plt.plot(allTimes,allValues4)
+        plt.plot(allTimes, allValues3)
+        plt.subplot(2, 1, 2)
+        plt.plot(allTimes, allValues4)
         plt.savefig("test_RectangularHeartActionForce.png")
         #plt.show()
 
     def test_RespiratoryDelayedSmearedHeartActionForce(self):
         data = RungeKutta45IntegratorData(5,0.0)
-        period = 1.0
+        period = 0.5
         lastFire = - period #force fire at 0.0
         fireNotifier = FiringTimesNotifier()
         force = RespiratoryDelayedSmearedHeartActionForce()
         force.Drive = 0.0 #Current value of heart drive.
         force.CoordinateNumber = 4 #Coordinate number, to  which the state will be written
         force.KickAmplitude = 1.0 #Kick amplitude
-        force.DelayTau = 0.3 #Time from firing order to actual kick
+        force.DelayTau = 0.13 #Time from firing order to actual kick
         force.SamplingTime = 0.1 # required to normalize delay time.
         force.StepPeriod = 1.0 #Heart period
         force.FireOrderTime = None #Time of last beat [s]
-        force.DecayTau = 0.5 # Time by which the drive decays
+        force.DecayTau = 15.0 # Time by which the drive decays
         force.Notify = fireNotifier.Notify
 
         npoints = 1000
