@@ -13,7 +13,7 @@ def phaseEfectivenessCurveSH(phi):
             return value    
 
 def phaseEfectivenessCurveNull(phi):        
-            return 0.0
+            return 1.0
             
 class IntegrateAndFire:
     """
@@ -22,28 +22,35 @@ class IntegrateAndFire:
     
     """
     def __init__(self):
-        self.Phase = 0.0 #Current value of heart drive.
+        self.Phase = 0.0 # Current value of heart drive.
         self.r = 0.001 # r in sampling time units - natural phase increment
         self.SamplingTime = 0.1 # required to normalize r.
-        self.CoordinateNumberForR = 6        
+        # the rate may be complicated. It has to be separately monitored.
+        self.CoordinateNumberForRate = 7         
+        self.CoordinateNumberForPhase = 6
         self.CoordinateNumberForForceInput = 5
-        self.CoordinateNumberForOutput = 4 #Coordinate number, to  which the state will be written
+        # Coordinate number, to  which the state will be written
+        self.CoordinateNumberForOutput = 4 
         self.KickAmplitude = 1.0 #Kick amplitude        
         self.Notify = NilNotify
         self.phaseEfectivenessCurve = phaseEfectivenessCurveNull
     #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
     
     def ApplyDrive(self,data):
+        """
+        The drive value is essentially zero. When the oscillator fires, drive is 1.0.
+        Additionally the phase and the local phase slope is also reported.
+        """
         currentDrive = 0.0
-        effectiveR = self.r +  data[self.CoordinateNumberForForceInput] * phaseEfectivenessCurve(self.Phase)        
-        self.Phase = self.Phase + effectiveR/self.SamplingTime #at each time step
-        print(self.Phase)
+        effectiveR = self.r +  data[self.CoordinateNumberForForceInput] * self.phaseEfectivenessCurve(self.Phase)                
+        self.Phase = self.Phase + effectiveR/self.SamplingTime #at each time step        
         doFire = self.Phase >= 1.0        
         if doFire:
                 currentDrive = self.KickAmplitude
                 self.Phase = self.Phase - 1.0
         data[self.CoordinateNumberForOutput] = currentDrive
-        data[self.CoordinateNumberForR] = effectiveR
+        data[self.CoordinateNumberForPhase] = self.Phase
+        data[self.CoordinateNumberForRate] = effectiveR
         if doFire:            
             self.Notify(data)
 

@@ -4,6 +4,7 @@ Created on Sat Jun  3 21:13:26 2017
 
 @author: teos
 """
+import sys
 import logging
 import unittest
 import numpy as np
@@ -11,9 +12,6 @@ import matplotlib.pyplot as plt
 from Notifiers import SeriesNotifier, FiringTimesNotifier
 from HeartActionForce import RectangularHeartActionForce, RespiratoryDelayedSmearedHeartActionForce
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
-
-
-
 
 class HeartActionForceTest(unittest.TestCase):
 
@@ -42,7 +40,9 @@ class HeartActionForceTest(unittest.TestCase):
         plt.plot(allTimes, allValues3)
         plt.subplot(2, 1, 2)
         plt.plot(allTimes, allValues4)
-        plt.savefig("test_RectangularHeartActionForce.png")
+        fname = sys._getframe().f_code.co_name + ".png"
+        print("Test result in %s" % fname)
+        plt.savefig(fname) 
         #plt.show()
 
     def test_RespiratoryDelayedSmearedHeartActionForce(self):
@@ -84,7 +84,9 @@ class HeartActionForceTest(unittest.TestCase):
         plt.subplot(2, 1, 2)
         plt.plot(allTimes,seriesNotifier.GetVar(0),"r")
         plt.plot(allTimes,seriesNotifier.GetVar(4))
-        plt.savefig("test_RespiratoryDelayedSmearedHeartActionForce.png")
+        fname = sys._getframe().f_code.co_name + ".png"
+        print("Test result in %s" % fname)
+        plt.savefig(fname) 
 def main():
 
     logging.basicConfig(level=logging.DEBUG)
