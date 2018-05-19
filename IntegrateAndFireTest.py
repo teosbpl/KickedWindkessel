@@ -8,6 +8,7 @@ import sys
 import random
 import logging
 import unittest
+import pdb
 import numpy as np
 import matplotlib.pyplot as plt
 from Notifiers import SeriesNotifier, FiringTimesNotifier
@@ -331,12 +332,7 @@ class IntegrateAndFireTest(unittest.TestCase):
         data = RungeKutta45IntegratorData(10,0.0)
 
         iafResp = IntegrateAndFire()
-        #Sampling time quant = 0.1
-        # Phase: 0-1
-        # set respiratory rate 20 BPM
-        # T = 3 s
-        # T = 30 steps
-        iafResp.r = 1.0/30.0#0.001
+        iafResp.SetPhaseVelocityFromBPM(20)
         iafResp.KickAmplitude = 0.01
         iafResp.CoordinateNumberForRate = 7         
         iafResp.CoordinateNumberForPhase = 6
@@ -349,15 +345,12 @@ class IntegrateAndFireTest(unittest.TestCase):
         seriesNotifier = SeriesNotifier(10,npoints)
         
         iafHeart = IntegrateAndFire()
-        #resting heart rate 66 BPM
-        #T[s] = 60 / 66 [s]
-        #T[steps] = 60 / (tquant * 66)
-        iafHeart.SamplingTime = 0.1
-        iafHeartBPM = 66
-        iafHeart.r = 60.0 / (iafHeart.SamplingTime * iafHeartBPM)
+        iafHeart.SamplingTime = 0.1        
+        iafHeart.SetPhaseVelocityFromBPM(66)
         iafHeart.CoordinateNumberForRate = 0
         iafHeart.CoordinateNumberForPhase = 1
         iafHeart.CoordinateNumberForForceInput = 4 #essential
+        iafHeart.CoordinateNumberForForceInput = 9 # void  #essential
         # Coordinate number, to  which the state will be written
         #this variable will be used for coupling.
         iafHeart.CoordinateNumberForOutput = 2 
@@ -384,14 +377,18 @@ class IntegrateAndFireTest(unittest.TestCase):
         #plt.plot(allTimes,seriesNotifier.GetVar(5))#effective rate
         plt.plot(allTimes,seriesNotifier.GetVar(4),"g",linewidth=2)
         plt.subplot(3,1,2)
+        #pdb.set_trace()
         
         plt.plot(allTimes,seriesNotifier.GetVar(6),"b")
-        plt.plot(fireNotifier.firingTimes,spikes,"bo")        
+        plt.plot(fireNotifier.firingTimes,spikes,"bo")
+        plt.xlabel("Time [s]")
+        plt.ylim(0.0,1.2)
         plt.subplot(3,1,3)
         plt.plot(allTimes,seriesNotifier.GetVar(1),"r")
         #plt.plot(allTimes,seriesNotifier.GetVar(2),"r")
-        plt.plot(fireNotifierHeart.firingTimes,spikes2,"ro")        
-
+        plt.plot(fireNotifierHeart.firingTimes,spikes2,"ro")
+        plt.ylim(0.0,1.2)
+        plt.xlabel("Time [s]")
         fname = sys._getframe().f_code.co_name + ".png"
         print("Test result in %s" % fname)
         plt.savefig(fname) 

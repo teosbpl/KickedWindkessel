@@ -35,7 +35,25 @@ class IntegrateAndFire:
         self.Notify = NilNotify
         self.phaseEfectivenessCurve = phaseEfectivenessCurveNull
     #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
-    
+    def SetPhaseVelocityFromBPM(self,bpm):
+        """
+        Full period = phase [0,1]
+        Full period is in seconds
+        BPM is in beats per minute = nbeats per 60 seconds.
+        Full period is T = 60 / bpm [seconds].
+        So in order to generate such a period
+        Phase velocity must be 1.0 / T
+        Single phase increment is per single sampling time step.
+        r may be determined from proportion:
+        1.0 - T
+        phaseIncrement - sampling time increment
+        
+        phaseIncrement * T = 1.0 * SamplingTime
+        phaseIncrement = SamplingTime / T                
+        """
+        self.r = self.SamplingTime * bpm / 60.0
+        return self.r
+        
     def ApplyDrive(self,data):
         """
         The drive value is essentially zero. When the oscillator fires, drive is 1.0.
@@ -43,7 +61,8 @@ class IntegrateAndFire:
         """
         currentDrive = 0.0
         effectiveR = self.r +  data[self.CoordinateNumberForForceInput] * self.phaseEfectivenessCurve(self.Phase)                
-        self.Phase = self.Phase + effectiveR/self.SamplingTime #at each time step        
+        self.Phase = self.Phase + effectiveR #at each time step        
+        #self.Phase = self.Phase + effectiveR/self.SamplingTime #at each time step        
         doFire = self.Phase >= 1.0        
         if doFire:
                 currentDrive = self.KickAmplitude
