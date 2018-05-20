@@ -122,6 +122,7 @@ class KickedWindkesselModel:
                
                 self.heartFlowTimespan = 0.01#;//0.1 sec                
                 self.heartFlowBeginTime = -1
+                self.CoordinateNumberForRespPhase = -1
         
         @property
         def ModelDimension(self):
@@ -161,8 +162,11 @@ class KickedWindkesselModel:
             self.Notify(self.data)
             logging.info("Iterating from T0=0.0 to Tmax=%f, dT=%f, npoints=%d" % (self.integrator.Tmax(),self.integrator.param.dT,self.integrator.param.Npoints))
             while True:
-                self.settings.heartActionForce.ApplyDrive(self.data)                
-                self.data[3] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * self.data.t / self.settings.breathingPeriod))#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
+                self.settings.heartActionForce.ApplyDrive(self.data)
+                if self.settings.CoordinateNumberForRespPhase == -1:
+                    self.data[3] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * self.data.t / self.settings.breathingPeriod))#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
+                else:
+                    self.data[3] = self.settings.p_I0 + self.settings.p_I1 * (1 + np.cos(2 * np.pi * self.data[self.settings.CoordinateNumberForRespPhase]))#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
                 #self.settings.sineOfBreathingPhase = np.sin(2 * np.pi * self.data.t / self.settings.breathingPeriod)
                 
                 if not self.integrator.Iterate(self.settings):
