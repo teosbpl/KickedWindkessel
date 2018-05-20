@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 import pdb
 from KickedWindkesselModel import KickedWindkesselModel
 from AbpmFiducialPointsCollector import AbpmFiducialPointsCollector
-from Notifiers import SeriesNotifier, FiringTimesNotifier, NotifierChain
+from Notifiers import SeriesNotifier, FiringTimesNotifier, NotifierChain, MinMaxNotifier
 from IntegrateAndFire import IntegrateAndFire, phaseEfectivenessCurveSH
-from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
 from HeartActionForce import RectangularHeartActionForce,RespiratoryDelayedSmearedHeartActionForce,HeartActionForceChain
+from KickedWindkesselModelVisualization import KickedWindkesselModelVisualization
 
 class KickedWindkesselModelTest(unittest.TestCase):
     """
@@ -444,10 +444,18 @@ class KickedWindkesselModelTest(unittest.TestCase):
         iafHeart.CoordinateNumberForForceInput = force.CoordinateNumber        
         # Coordinate number, to  which the state will be written        
         iafHeart.CoordinateNumberForOutput = 4 
-        fireNotifierHeart = FiringTimesNotifier()
-        iafHeart.Notify = fireNotifierHeart.Notify
+        fireNotifierHeart = FiringTimesNotifier()        
+        #iafHeart.Notify = fireNotifierHeart.Notify
+
 
         collector = AbpmFiducialPointsCollector(0)#ABPM = 0
+        iafHeart.NotifyFunctions = [fireNotifierHeart.Notify,collector.HeartOpenNotifier]
+        mmNotifier = MinMaxNotifier(0)
+        mmNotifier.MinNotifier = collector.AbpmMinNotifier
+        mmNotifier.MaxNotifier = collector.AbpmMaxNotifier
+
+
+
         seriesNotifier = SeriesNotifier(dimension,npoints)
         allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
         
@@ -457,77 +465,32 @@ class KickedWindkesselModelTest(unittest.TestCase):
         model = KickedWindkesselModel(settings,dimension)
         model.param.Npoints = npoints
         
-        chain = NotifierChain((collector,seriesNotifier))
+        chain = NotifierChain((mmNotifier,collector,seriesNotifier))
         model.Notify = chain.Notify
             
         model.IterateToNotifiers()
-
-        #print("Firing times: %s" % str(fireNotifier.firingTimes))
-        fig = plt.figure()
-        gs = gridspec.GridSpec(7,1,
-                               height_ratios = [1,2,2,2,2,2,4]
-                               )
-        ax = plt.subplot(gs[0])
-        plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForPhase),"b")
-        plt.plot(fireNotifierResp.firingTimes,fireNotifierResp.firingTimesSpikes(),"bo")
-        plt.yticks([0.0,1.0])
-        plt.ylabel(r"$\Phi(t)$")
-        #plt.xlabel("Time [s]")
-        plt.ylim(0.0,1.2)
-        plt.setp(ax.get_xticklabels(), visible = False)
+        allItems = collector.GetFiducialPointsList()
+        series = {}
+        series["systolicABP"] = np.array(allItems[:,1])
+        series["diastolicABP"] = np.array(allItems[:,2] )
+        series["meanABP"] = np.array(allItems[:,3])
+        for key in series.keys():
+            av = np.average(series[key])
+            sd = np.std(series[key])
+            logging.info("%s: av: %.2lf sd: %.2lf, npoints: %d"%(key,av,sd,len(series[key])))
         
-
-        ax = plt.subplot(gs[1])        
-        plt.plot(allTimes,seriesNotifier.GetVar(3))
-        plt.ylabel(r"$p_I(t)$")
-        plt.setp(ax.get_xticklabels(), visible = False)
+        print(allItems)
         
-        ax = plt.subplot(gs[2])
-        #todo: the guy below is all flat.
-        #plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
-        plt.plot(fireNotifier.firingTimes,fireNotifier.firingTimesSpikes(),"go")
-        plt.plot(allTimes,seriesNotifier.GetVar(force.CoordinateNumber),"g",linewidth=2)      
-        plt.yticks([])
-        plt.setp(ax.get_xticklabels(), visible = False)        
-        #plt.xlabel("Time [s]")
-        plt.ylabel(r"$r_{n}(t)$")
-        #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
-        ax = plt.subplot(gs[3])
-        plt.yticks([])
-        plt.ylabel(r"$r(t)$")                
-        plt.plot(allTimes,seriesNotifier.GetVar(iafHeart.CoordinateNumberForRate),"v")
-        plt.setp(ax.get_xticklabels(), visible = False)
-        
-        ax = plt.subplot(gs[4])
-        plt.plot(allTimes,seriesNotifier.GetVar(iafHeart.CoordinateNumberForPhase),"r")
-        #plt.plot(allTimes,seriesNotifier.GetVar(2),"r")
-        plt.plot(fireNotifierHeart.firingTimes,fireNotifierHeart.firingTimesSpikes(),"ro")
-        plt.ylim(0.0,1.2)
-        plt.yticks([0.0,1.0])
-        #plt.xlabel("Time [s]")
-        plt.ylabel(r"$\varphi(t)$")
-        #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
-        plt.setp(ax.get_xticklabels(), visible = False)
-        
-        ax = plt.subplot(gs[5])
-        plt.ylabel("ISI")
-        x = fireNotifierHeart.firingTimes[1:]
-        y = fireNotifierHeart.ISI()[1:]                        
-        logging.info(x)
-        logging.info(y)
-        plt.plot(x,y,"b+-")
-        plt.ylim(0.0,2.0)
-        plt.setp(ax.get_xticklabels(), visible = False)
-        
-        plt.subplot(gs[6])        
-        for varNumber in (0,):         
-            plt.plot(allTimes,seriesNotifier.GetVar(varNumber))
-        plt.ylim(100.0,300.0)
-        plt.xlabel("Time [s]")
-        plt.ylabel("BP [mmHg]")
         fname = sys._getframe().f_code.co_name + ".png"
-        logging.info("Test result in %s" % fname)
-        plt.savefig(fname)   
+        KickedWindkesselModelVisualization(fname,allTimes,allItems,seriesNotifier,
+                                       fireNotifierResp,
+                                       fireNotifier,
+                                       fireNotifierHeart,
+                                       iafResp.CoordinateNumberForPhase,
+                                       force.CoordinateNumber,
+                                       iafHeart.CoordinateNumberForRate,
+                                       iafHeart.CoordinateNumberForPhase
+                                       )
                    
 def main():
 

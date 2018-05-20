@@ -35,6 +35,7 @@ class IntegrateAndFire:
         self.CoordinateNumberForOutput = 4 
         self.KickAmplitude = 1.0 #Kick amplitude        
         self.Notify = NilNotify
+        self.NotifyFunctions = [] # list of notify functions instead of single Notify
         
         self.CoordinateNumberForOutput = 4
         self.phaseEfectivenessCurve = phaseEfectivenessCurveNull
@@ -91,6 +92,9 @@ class IntegrateAndFire:
             data[self.CoordinateNumberForPhase] = self.Phase
         if self.CoordinateNumberForRate != -1:
             data[self.CoordinateNumberForRate] = effectiveR
-        if doFire:            
+        if doFire:
             self.Notify(data)
+            if self.NotifyFunctions:
+                for fn in self.NotifyFunctions:
+                    fn(data)
 

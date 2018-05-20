@@ -81,7 +81,7 @@ class AbpmFiducialPointsCollector:
         """
         Full model notifier is fireed at each step of simulation.
         Its name is Notifier so that it can be used in chain notifier.
-        """
+        """        
         self.meanAbpmCollector = self.meanAbpmCollector + data.y[self.varNumber]
         self.meanAbpmSampleCounter = self.meanAbpmSampleCounter + 1
         self.last_t = data.t
