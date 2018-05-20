@@ -149,8 +149,13 @@ class NotifierChain:
             notifier.Notify(data)
 
 class FiringTimesNotifier:
+    
     def __init__(self):
         self.firingTimes = []
+        
     def Notify(self,data):
         self.firingTimes.append(data.t)
         logging.debug(self.firingTimes)
+        
+    def firingTimesSpikes(self):
+        return np.ones(len(self.firingTimes))

@@ -73,12 +73,10 @@ class RandomHeartActionForce:
             self.Notify(data)
 
 class RespiratoryDelayedSmearedHeartActionForce:
-    """
-    This class represents the action of the heart driven by external kick.
+    """    
+    This class is a helper to represent the action of the heart driven by external kick.
     The external kick is applied by setting FireOrderTime to current time.
     Then after delay time a kick is applied to drive value.
-    Initially the heart is in phase with respiration,
-    as both periods are commensurate (3:1) and initial phase of both is 0.
     """
     def __init__(self):
         self.Drive = 0.0 #Current value of heart drive.
@@ -86,7 +84,6 @@ class RespiratoryDelayedSmearedHeartActionForce:
         self.KickAmplitude = 1.0 #Kick amplitude
         self.DelayTau = 0.1 #Time from firing order to actual kick
         self.SamplingTime = 0.1 # required to normalize delay time.
-        self.StepPeriod = 1.0 #Heart period
         self.FireOrderTime = None #Time of last beat [s]
         self.DecayTau = 0.2 # Time by which the drive decays
         self.Notify = NilNotify

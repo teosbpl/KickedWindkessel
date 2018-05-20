@@ -56,8 +56,6 @@ class HeartActionForceTest(unittest.TestCase):
         force.KickAmplitude = 1.0 #Kick amplitude
         force.DelayTau = 0.13 #Time from firing order to actual kick
         force.SamplingTime = 0.1 # required to normalize delay time.
-        force.StepPeriod = 1.0 #Heart period
-        force.FireOrderTime = None #Time of last beat [s]
         force.DecayTau = 15.0 # Time by which the drive decays
         force.Notify = fireNotifier.Notify
 
@@ -77,8 +75,8 @@ class HeartActionForceTest(unittest.TestCase):
             force.ApplyDrive(data) # will open or not.
             seriesNotifier.Notify(data)
 
-        print("Firing times: %s" % str(fireNotifier.firingTimes))
-        #fig = plt.figure()
+        #print("Firing times: %s" % str(fireNotifier.firingTimes))
+        fig = plt.figure()
         plt.subplot(2, 1, 1)
         plt.plot(allTimes,seriesNotifier.GetVar(3))
         plt.subplot(2, 1, 2)

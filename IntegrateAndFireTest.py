@@ -327,13 +327,15 @@ class IntegrateAndFireTest(unittest.TestCase):
         """
         This test is a comparison of two IAFs: one with PRC and one without.
         """
-        npoints = 120
+        npoints = 240
         
         data = RungeKutta45IntegratorData(10,0.0)
 
         iafResp = IntegrateAndFire()
         iafResp.SetPhaseVelocityFromBPM(20)
-        iafResp.KickAmplitude = 0.01
+        iafResp.SetInitialPhase(1.0/7.0)
+        iafResp.KickAmplitude = 0.1
+        iafResp.SamplingTime = 0.01
         iafResp.CoordinateNumberForRate = 7         
         iafResp.CoordinateNumberForPhase = 6
         iafResp.CoordinateNumberForForceInput = 5 #not used
@@ -345,12 +347,12 @@ class IntegrateAndFireTest(unittest.TestCase):
         seriesNotifier = SeriesNotifier(10,npoints)
         
         iafHeart = IntegrateAndFire()
-        iafHeart.SamplingTime = 0.1        
-        iafHeart.SetPhaseVelocityFromBPM(66)
+        iafHeart.SamplingTime = 0.01        
+        iafHeart.SetPhaseVelocityFromBPM(67)
         iafHeart.CoordinateNumberForRate = 0
         iafHeart.CoordinateNumberForPhase = 1
         iafHeart.CoordinateNumberForForceInput = 4 #essential
-        iafHeart.CoordinateNumberForForceInput = 9 # void  #essential
+        #iafHeart.CoordinateNumberForForceInput = 9 # void  #essential
         # Coordinate number, to  which the state will be written
         #this variable will be used for coupling.
         iafHeart.CoordinateNumberForOutput = 2 
@@ -361,7 +363,6 @@ class IntegrateAndFireTest(unittest.TestCase):
         for t in allTimes:
             data.t = t
  
-            #should work out of the box.
             iafResp.ApplyDrive(data) # will open or not.
             iafHeart.ApplyDrive(data)
             #print("%lf\t%lf" % (iaf.Phase,data.y[6]))
@@ -376,6 +377,9 @@ class IntegrateAndFireTest(unittest.TestCase):
         #plt.ylim(-12.0,12.0)
         #plt.plot(allTimes,seriesNotifier.GetVar(5))#effective rate
         plt.plot(allTimes,seriesNotifier.GetVar(4),"g",linewidth=2)
+        plt.xlabel("Time [s]")
+        plt.ylabel("Force")
+        plt.ylim(0.0,0.1)
         plt.subplot(3,1,2)
         #pdb.set_trace()
         
@@ -394,45 +398,182 @@ class IntegrateAndFireTest(unittest.TestCase):
         plt.savefig(fname) 
 
 
-    def test_RespiratoryDelayedSmearedHeartActionForceAndPRC(self):
-        data = RungeKutta45IntegratorData(5,0.0)
-        period = 0.5
-        lastFire = - period #force fire at 0.0
-        fireNotifier = FiringTimesNotifier()
+    def test_RespiratoryDelayedSmearedHeartActionForceForcedByResp(self):
+        """
+        This test handles the majority of physiological control of heart 
+        rate. Respiratory IAF periodically forces the heart via the 
+        RespiratoryDelayedSmearedHeartActionForce.
+        The test shows how respiratory kick is converted to delayed smeared kick.
+        """
+        npoints = 240
+        data = RungeKutta45IntegratorData(10,0.0)
+        
+
+        iafResp = IntegrateAndFire()
+        iafResp.SetPhaseVelocityFromBPM(20)
+        iafResp.SamplingTime = 0.1
+        iafResp.SetInitialPhase(0.0)
+        iafResp.KickAmplitude = 0.1
+        iafResp.SamplingTime = 0.1
+        iafResp.CoordinateNumberForRate = 7         
+        iafResp.CoordinateNumberForPhase = 6
+        iafResp.CoordinateNumberForForceInput = -1 #not used
+        # Coordinate number, to  which the state will be written
+        #this variable will be used for coupling.
+        iafResp.CoordinateNumberForOutput = 4         
+        fireNotifierResp = FiringTimesNotifier()
+        iafResp.Notify = fireNotifierResp.Notify
+        
+        
+        
+        fireNotifier = FiringTimesNotifier()        
         force = RespiratoryDelayedSmearedHeartActionForce()
         force.Drive = 0.0 #Current value of heart drive.
-        force.CoordinateNumber = 4 #Coordinate number, to  which the state will be written
+        force.CoordinateNumber = 5 #Coordinate number, to  which the state will be written
         force.KickAmplitude = 1.0 #Kick amplitude
-        force.DelayTau = 0.13 #Time from firing order to actual kick
+        force.DelayTau = 1.53 #Time from firing order to actual kick
         force.SamplingTime = 0.1 # required to normalize delay time.
         force.StepPeriod = 1.0 #Heart period
         force.FireOrderTime = None #Time of last beat [s]
         force.DecayTau = 15.0 # Time by which the drive decays
         force.Notify = fireNotifier.Notify
 
-        npoints = 1000
-        period = 1.0
-        seriesNotifier = SeriesNotifier(5,npoints)
-        allTimes = np.linspace(0.0,10.0,npoints)
+
+        seriesNotifier = SeriesNotifier(data.dimension,npoints)
+        allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
         for t in allTimes:
-            data.t = t
-            data.y[3] = 10.0 * np.cos(2 * np.pi * t / period)
-            data.y[0] = data.y[1] = data.y[2] = 0.0
-            if t >= lastFire + period:
+            data.t = t            
+            data.y[0] = 0.0 # reset only the variable which gets set manually 
+            # to prevent constant firing
+            iafResp.ApplyDrive(data)
+            if data[iafResp.CoordinateNumberForOutput] > 0.0:            
                 data.y[0] = 1.0
                 force.FireOrderTime = t
-                lastFire = t
-            #print(data)
+            print(data)
             force.ApplyDrive(data) # will open or not.
             seriesNotifier.Notify(data)
+            
+        spikes = np.ones(len(fireNotifier.firingTimes))
+        spikesResp = np.ones(len(fireNotifierResp.firingTimes))
+        #print("Firing times: %s" % str(fireNotifier.firingTimes))
+        fig = plt.figure()
+        plt.subplot(3, 1, 1)
+        plt.plot(allTimes,seriesNotifier.GetVar(6),"b")
+        plt.plot(fireNotifierResp.firingTimes,spikesResp,"bo")        
+        plt.ylabel("Resp. phase [1/rad]")
+        plt.xlabel("Time [s]")
+        plt.ylim(0.0,1.2)
+        
+        plt.subplot(3, 1, 2)
+        plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
+        plt.xlabel("Time [s]")
+        plt.ylabel("Force")
+        plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(fireNotifier.firingTimes,spikes,"bo")
+        plt.plot(allTimes,seriesNotifier.GetVar(force.CoordinateNumber),"g",linewidth=2)      
+        plt.xlabel("Time [s]")
+        plt.ylabel("Delayed Force")
+        #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
+        
+        fname = sys._getframe().f_code.co_name + ".png"
+        print("Test result in %s" % fname)
+        plt.savefig(fname) 
 
-        print("Firing times: %s" % str(fireNotifier.firingTimes))
-        #fig = plt.figure()
-        plt.subplot(2, 1, 1)
-        plt.plot(allTimes,seriesNotifier.GetVar(3))
-        plt.subplot(2, 1, 2)
-        plt.plot(allTimes,seriesNotifier.GetVar(0),"r")
-        plt.plot(allTimes,seriesNotifier.GetVar(4))
+    
+    def test_RspDrivesHeartViaSmearedForce(self):
+        """
+        This test handles the majority of physiological control of heart 
+        rate. Respiratory IAF periodically forces the heart via the 
+        RespiratoryDelayedSmearedHeartActionForce. The force is applied to heart
+        drive. Initially the heart is in phase with respiration, as both 
+        periods are commensurate (3:1) and initial phase of both is 0.
+        """
+        npoints = 240
+        data = RungeKutta45IntegratorData(10,0.0)
+        
+
+        iafResp = IntegrateAndFire()
+        iafResp.SetPhaseVelocityFromBPM(20)
+        iafResp.SamplingTime = 0.1
+        iafResp.SetInitialPhase(0.0)
+        iafResp.KickAmplitude = 0.1
+        iafResp.SamplingTime = 0.1
+        iafResp.CoordinateNumberForRate = 7         
+        iafResp.CoordinateNumberForPhase = 6
+        iafResp.CoordinateNumberForForceInput = -1 #not used
+        # Coordinate number, to  which the state will be written
+        #this variable will be used for coupling.
+        iafResp.CoordinateNumberForOutput = 4         
+        fireNotifierResp = FiringTimesNotifier()
+        iafResp.Notify = fireNotifierResp.Notify
+        
+        fireNotifier = FiringTimesNotifier()        
+        force = RespiratoryDelayedSmearedHeartActionForce()
+        force.Drive = 0.0 #Current value of heart drive.
+        force.CoordinateNumber = 5 #Coordinate number, to  which the state will be written
+        force.KickAmplitude = 1.0 #Kick amplitude
+        force.DelayTau = 0.53 #Time from firing order to actual kick
+        force.SamplingTime = 0.1 # required to normalize delay time.        
+        force.FireOrderTime = None #Time of last beat [s]
+        force.DecayTau = 5.0 # Time by which the drive decays
+        force.Notify = fireNotifier.Notify
+
+        iafHeart = IntegrateAndFire()
+        iafHeart.SamplingTime = 0.01        
+        iafHeart.SetPhaseVelocityFromBPM(67)
+        iafHeart.CoordinateNumberForRate = 0
+        iafHeart.CoordinateNumberForPhase = 1
+        iafHeart.CoordinateNumberForForceInput = force.CoordinateNumber        
+        # Coordinate number, to  which the state will be written        
+        iafHeart.CoordinateNumberForOutput = 2 
+        fireNotifierHeart = FiringTimesNotifier()
+        iafHeart.Notify = fireNotifierHeart.Notify
+
+
+        seriesNotifier = SeriesNotifier(data.dimension,npoints)
+        allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
+        for t in allTimes:
+            data.t = t            
+            data.y[0] = 0.0 # reset only the variable which gets set manually 
+            # to prevent constant firing
+            iafResp.ApplyDrive(data)
+            if data[iafResp.CoordinateNumberForOutput] > 0.0:            
+                data.y[0] = 1.0
+                force.FireOrderTime = t
+            print(data)
+            force.ApplyDrive(data) # will open or not.
+            iafHeart.ApplyDrive(data)
+            seriesNotifier.Notify(data)
+                    
+        #print("Firing times: %s" % str(fireNotifier.firingTimes))
+        fig = plt.figure()
+        plt.subplot(3, 1, 1)
+        plt.plot(allTimes,seriesNotifier.GetVar(6),"b")
+        plt.plot(fireNotifierResp.firingTimes,fireNotifierResp.firingTimesSpikes(),"bo")        
+        plt.ylabel("Resp. phase [1/rad]")
+        plt.xlabel("Time [s]")
+        plt.ylim(0.0,1.2)
+        
+        plt.subplot(3, 1, 2)
+        plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
+        plt.plot(fireNotifier.firingTimes,fireNotifier.firingTimesSpikes(),"go")
+        plt.plot(allTimes,seriesNotifier.GetVar(force.CoordinateNumber),"g",linewidth=2)      
+
+        plt.xlabel("Time [s]")
+        plt.ylabel("Force")
+        #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(allTimes,seriesNotifier.GetVar(iafHeart.CoordinateNumberForPhase),"r")
+        #plt.plot(allTimes,seriesNotifier.GetVar(2),"r")
+        plt.plot(fireNotifierHeart.firingTimes,fireNotifierHeart.firingTimesSpikes(),"ro")
+        plt.ylim(0.0,1.2)        
+        plt.xlabel("Time [s]")
+        plt.ylabel("Heart Phase")
+        #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
+        
         fname = sys._getframe().f_code.co_name + ".png"
         print("Test result in %s" % fname)
         plt.savefig(fname) 
