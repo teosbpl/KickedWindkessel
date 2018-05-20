@@ -112,22 +112,7 @@ def PhaseShiftProcessorOld():
     plt.savefig("phaseShiftFunction100.png")
     plt.show()
 
-def PhaseShiftProcessor():
-    #stepShiftLinspace = np.linspace(-0.5,1.25,20)
-    stepShiftLinspace = np.linspace(0,3.0,50)
-    #stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
-    Sav = []
-    Ssd = []
-    Dav = []
-    Dsd = []
-    Mav = []
-    Msd = []
-
-    for stepShift in stepShiftLinspace:    
-    
-        dimension = 20
-        npoints = 3600
-        npoints = 5000        
+def StandardModelSetup(dimension,npoints):
         settings = KickedWindkesselModel.KickedWindkesselModelSettings() 
         
         fireNotifier = FiringTimesNotifier()        
@@ -135,14 +120,14 @@ def PhaseShiftProcessor():
         force.CoordinateNumber = 9 #Coordinate number, to  which the state will be written
         force.CoordinateNumberForInput = 6
         force.KickAmplitude = 1.0 #Kick amplitude
-        force.DelayTau = stepShift #Time from firing order to actual kick
+        force.DelayTau = 0.3 #Time from firing order to actual kick
         force.SamplingTime = 0.01 # required to normalize delay time.                
         force.DecayTau = 0.3 # Time by which the drive decays
         force.Notify = fireNotifier.Notify        
 
         iafResp = IntegrateAndFire()
         iafResp.SamplingTime = 0.01
-        iafResp.SetPhaseVelocityFromBPM(6)
+        iafResp.SetPhaseVelocityFromBPM(20)
         iafResp.SetInitialPhase(0.0)
         iafResp.KickAmplitude = 0.1        
         iafResp.CoordinateNumberForRate = -1
@@ -157,7 +142,7 @@ def PhaseShiftProcessor():
 
         iafHeart = IntegrateAndFire()
         iafHeart.SamplingTime = 0.01        
-        iafHeart.SetPhaseVelocityFromBPM(67)
+        iafHeart.SetPhaseVelocityFromBPM(66)
         iafHeart.phaseEfectivenessCurve = phaseEfectivenessCurveSH
         iafHeart.CoordinateNumberForRate = 8
         iafHeart.CoordinateNumberForPhase = 7
@@ -174,22 +159,44 @@ def PhaseShiftProcessor():
         mmNotifier.MinNotifier = collector.AbpmMinNotifier
         mmNotifier.MaxNotifier = collector.AbpmMaxNotifier
 
-
-
         seriesNotifier = SeriesNotifier(dimension,npoints)
-        allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
+        
         
         settings.heartActionForce = HeartActionForceChain([iafResp,force,iafHeart])
         settings.CoordinateNumberForRespPhase = iafResp.CoordinateNumberForPhase
-        settings.p_I1 = 3.0 # default is 0.1
+        
         model = KickedWindkesselModel(settings,dimension)
         model.param.Npoints = npoints
         
         chain = NotifierChain((mmNotifier,collector,seriesNotifier))
         model.Notify = chain.Notify
-            
+        
+        return settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier
+        
+
+def PhaseShiftProcessor():
+    #stepShiftLinspace = np.linspace(-0.5,1.25,20)
+    stepShiftLinspace = np.linspace(0,3.0,50)
+    #stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
+    Sav = []
+    Ssd = []
+    Dav = []
+    Dsd = []
+    Mav = []
+    Msd = []
+
+    for n,stepShift in enumerate(stepShiftLinspace):
+    
+        dimension = 10
+        npoints = 3600
+        npoints = 5000
+        settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier = StandardModelSetup(dimension,npoints)
+        force.DelayTau = stepShift
+        force.KickAmplitude = 0.02
+        #model.settings.p_I1 = 3.0 # default is 0.1
         model.IterateToNotifiers()
         allItems = collector.GetFiducialPointsList()
+        allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
 #        series = {}
 #        series["systolicABP"] = np.array(allItems[:,1])
 #        series["diastolicABP"] = np.array(allItems[:,2] )
@@ -202,12 +209,16 @@ def PhaseShiftProcessor():
 #        print(allItems)    
         averages = []
         standard_deviations = []
-        firstAfterWarmup = 20
+        firstAfterWarmup = 30
         skipThisLine = False
         for channel in [1,2,3]:# 1-systloic 2-diastolic 3-mean
             averages.append(np.mean(allItems[firstAfterWarmup:,channel]))
             standard_deviations.append(np.std(allItems[firstAfterWarmup:,channel]))
-            if standard_deviations[-1] > 40.0:
+            if standard_deviations[-1] > 30.0:
+                logging.info("Standard deviation went crazy for data:")
+                logging.info("AV:%lf" % (np.mean(allItems[firstAfterWarmup:,channel])))
+                logging.info("SD:%lf" % (np.std(allItems[firstAfterWarmup:,channel])))
+                logging.info(allItems[firstAfterWarmup:,channel])
                 skipThisLine = True
         if skipThisLine:
             fname = sys._getframe().f_code.co_name + "_delay_%f.png" % (stepShift)
@@ -230,7 +241,7 @@ def PhaseShiftProcessor():
         Dsd.append(standard_deviations[1])
         Mav.append(averages[2])
         Msd.append(standard_deviations[2])
-        print("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
+        print("%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(n,force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
 
     #normalize values 
     basalValue = Ssd[0]
@@ -275,9 +286,128 @@ def PhaseShiftProcessor():
     #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    
-    ax.set_ylim(60,140)
+    #ax.set_ylim(60,140)
     plt.savefig("phaseShiftProcessor.png")
     plt.show()
 
+def KickAmplitudeProcessor():
+    #stepShiftLinspace = np.linspace(-0.5,1.25,20)
+    KickAmplitudeLinspace = np.linspace(0,0.1,50)
+    #stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
+    Sav = []
+    Ssd = []
+    Dav = []
+    Dsd = []
+    Mav = []
+    Msd = []
+
+    for n,kickAmplitude in enumerate(KickAmplitudeLinspace):
+    
+        dimension = 10
+        npoints = 3600
+        npoints = 5000
+        settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier = StandardModelSetup(dimension,npoints)
+        #force.DelayTau = stepShift
+        force.KickAmplitude = kickAmplitude
+        #model.settings.p_I1 = 3.0 # default is 0.1
+        model.IterateToNotifiers()
+        allItems = collector.GetFiducialPointsList()
+        allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
+#        series = {}
+#        series["systolicABP"] = np.array(allItems[:,1])
+#        series["diastolicABP"] = np.array(allItems[:,2] )
+#        series["meanABP"] = np.array(allItems[:,3])
+#        for key in series.keys():
+#            av = np.average(series[key])
+#            sd = np.std(series[key])
+#            logging.info("%s: av: %.2lf sd: %.2lf, npoints: %d"%(key,av,sd,len(series[key])))
+#        
+#        print(allItems)    
+        averages = []
+        standard_deviations = []
+        firstAfterWarmup = 30
+        skipThisLine = False
+        for channel in [1,2,3]:# 1-systloic 2-diastolic 3-mean
+            averages.append(np.mean(allItems[firstAfterWarmup:,channel]))
+            standard_deviations.append(np.std(allItems[firstAfterWarmup:,channel]))
+            if standard_deviations[-1] > 30.0:
+                logging.info("Standard deviation went crazy for data:")
+                logging.info("AV:%lf" % (np.mean(allItems[firstAfterWarmup:,channel])))
+                logging.info("SD:%lf" % (np.std(allItems[firstAfterWarmup:,channel])))
+                logging.info(allItems[firstAfterWarmup:,channel])
+                skipThisLine = True
+        if skipThisLine:
+            fname = sys._getframe().f_code.co_name + "_delay_%f.png" % (stepShift)
+            KickedWindkesselModelVisualization(fname,
+                                       allTimes,
+                                       allItems,
+                                       seriesNotifier,
+                                       fireNotifierResp,
+                                       fireNotifier,
+                                       fireNotifierHeart,
+                                       iafResp.CoordinateNumberForPhase,
+                                       force.CoordinateNumber,
+                                       iafHeart.CoordinateNumberForRate,
+                                       iafHeart.CoordinateNumberForPhase)
+            print("SKIPPING %f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
+            #continue
+        Sav.append(averages[0])
+        Ssd.append(standard_deviations[0])
+        Dav.append(averages[1])
+        Dsd.append(standard_deviations[1])
+        Mav.append(averages[2])
+        Msd.append(standard_deviations[2])
+        print("%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(n,force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
+
+    #normalize values 
+    basalValue = Ssd[0]
+    for i,v in enumerate(Ssd):
+        Ssd[i] = 100.0 * (v / basalValue)
+    basalValue = Dsd[0]
+    for i,v in enumerate(Dsd):
+        Dsd[i] = 100.0 * (v / basalValue)
+    basalValue = Msd[0]
+    for i,v in enumerate(Msd):
+        Msd[i] = 100.0 * (v / basalValue)
+
+    #pdb.set_trace()        
+    fig,ax = plt.subplots()
+    ax.ticklabel_format(useOffset = False)
+    #plt.subplot(3,1,1)    
+    ax.plot(KickAmplitudeLinspace,Ssd,"+r",linestyle="-",linewidth=1) # SAP thin curve    
+    #plt.subplot(3,1,2)
+    ax.plot(KickAmplitudeLinspace,Dsd,"og",linestyle="--",linewidth=3) # DAP thick dashed
+    #plt.subplot(3,1,3)
+    ax.plot(KickAmplitudeLinspace,Msd,"vb",linestyle="-",linewidth=3) # MAP thick solid
+    for y in (100.0,): # 80.0,100.0,120.0):
+        plt.axhline(y=y,color='k',linestyle='-')    
+    
+    #ax.fill(30, 30, fill=False, hatch='\\')
+    #pdb.set_trace()
+    ylim = copy.deepcopy(ax.get_ylim())# keep original limits.\
+    xlim = copy.deepcopy(ax.get_xlim())# keep original limits.\    
+    
+    
+#==============================================================================
+#     ax.fill([0,0,1,1,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+#     offsetOfHalf = len(Msd)/2
+#     rightHalfMsd = np.array(Msd[offsetOfHalf:])
+#     print(rightHalfMsd)
+#     rightLargerThan100 = np.where(rightHalfMsd>100)[0][0]
+#     rightHatchedEdge = stepShiftLinspace[offsetOfHalf+rightLargerThan100]
+#     print(rightHatchedEdge)
+#     ax.fill([rightHatchedEdge,rightHatchedEdge,xlim[1],xlim[1],rightHatchedEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+# 
+#==============================================================================
+    #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
+    ax.set_ylim([ylim[0],ylim[1]])    
+    ax.set_xlim([xlim[0],xlim[1]])    
+    #ax.set_ylim(60,140)
+    plt.savefig("kickAmplitudeProcessor.png")
+    plt.show()
+
+
 if __name__ == "__main__":
-    PhaseShiftProcessor()
+    logging.basicConfig(level=logging.INFO)
+    #PhaseShiftProcessor()
+    KickAmplitudeProcessor()

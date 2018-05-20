@@ -114,9 +114,9 @@ class KickedWindkesselModel:
                 self.Zvc = 1 / 0.005
                 #breathing
                 self.p_I0 = -4.0
-                self.p_I1 = 0.1 #2.0
+                self.p_I1 = 2.0
                 self.breathingPeriod = 3.0
-                self.breathingPhi0 = 0.0
+                #self.breathingPhi0 = 0.0
                 self.heartPhase = 0.0
                 #self.heartActionForce = NullDrivingForce()
                

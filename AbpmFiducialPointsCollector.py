@@ -36,9 +36,11 @@ class AbpmFiducialPointsCollector:
 
     def Finalize(self,data=None):
         if not self.lastMin:
-            self.lastMin = 0.0
+            return
+            #self.lastMin = 0.0
         if not self.lastMax:
-            self.lastMax = 0.0
+            return
+            #self.lastMax = 0.0
         _map = self.meanAbpmCollector / self.meanAbpmSampleCounter # MAP
         if data:
             t = data.t
@@ -56,6 +58,8 @@ class AbpmFiducialPointsCollector:
         #MAP value is assigned to previous R, not to the following
         #RR - likewise
         _dbp = self.lastMin
+        if _sbp == 0.0:
+            logging.warn("Warning: about to write 0.0 as SBP. List len is %d" % (len(self.FiducialPointsList)))
         item = [self.lastHeartOpenTime, _sbp, _dbp, _map, _rr]
         if self.FiducialPointsList is None:
            self.FiducialPointsList = [item]
@@ -86,9 +90,10 @@ class AbpmFiducialPointsCollector:
         self.meanAbpmSampleCounter = self.meanAbpmSampleCounter + 1
         self.last_t = data.t
         logging.debug("In full model notifier at %lf" % (data.t))
+        
     def GetFiducialPointsList(self):
-        if self.meanAbpmSampleCounter > 0:
-            self.Finalize()        
+        #if self.meanAbpmSampleCounter > 0:
+        #    self.Finalize()        
         return np.array(self.FiducialPointsList)
         
         
