@@ -122,10 +122,13 @@ class KickedWindkesselModel:
         def ModelDimension(self):
                 return 5
                 
-        def __init__(self,settings):                    
+        def __init__(self,settings,dimension=0):                    
             self.settings = settings#;// new KickedWindkesselModelSettings(settings);
             self.param = RungeKutta45IntegratorParams()
-            self.param.dimension = self.ModelDimension
+            if dimension == 0:
+                self.param.dimension = self.ModelDimension
+            else:
+                self.param.dimension = dimension #may be extended to andle extra data.
             self.param.dT = 0.01#0.01#;//1/100 or 1/125 //ol = 2 * 1E-7;                    //error control tolerance
             self.param.Tmin = 0.0#                         //startpoint
             self.param.Npoints = 10000#

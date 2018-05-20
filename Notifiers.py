@@ -159,3 +159,10 @@ class FiringTimesNotifier:
         
     def firingTimesSpikes(self):
         return np.ones(len(self.firingTimes))
+        
+    def ISI(self):
+        """
+        Returns ISI. Zero prepended to give the vector length euqal to that of times.
+        """
+        return np.ediff1d(np.array(self.firingTimes),to_begin=0)
+        

@@ -81,6 +81,7 @@ class RespiratoryDelayedSmearedHeartActionForce:
     def __init__(self):
         self.Drive = 0.0 #Current value of heart drive.
         self.CoordinateNumber = 4 #Coordinate number, to  which the state will be written
+        self.CoordinateNumberForInput = 9 #Coordinate number, from which the state will be read
         self.KickAmplitude = 1.0 #Kick amplitude
         self.DelayTau = 0.1 #Time from firing order to actual kick
         self.SamplingTime = 0.1 # required to normalize delay time.
@@ -89,6 +90,9 @@ class RespiratoryDelayedSmearedHeartActionForce:
         self.Notify = NilNotify
     #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
     def ApplyDrive(self,data):
+        if data[self.CoordinateNumberForInput] > 0.0:            
+                data[self.CoordinateNumberForInput] = 0.0#reset the kick signal
+                self.FireOrderTime = t
         justOpened = False
         if self.FireOrderTime: #is not None
             #waiting for delay time
@@ -103,3 +107,20 @@ class RespiratoryDelayedSmearedHeartActionForce:
         self.Drive = self.Drive - driveDecrement
         if justOpened:
             self.Notify(data)
+
+class HeartActionForceChain:
+    """
+    All forces are fired in order of appearance.
+    """
+    def __init__(self,forces = None):
+        self.forces = []
+        if forces:
+            for force in forces:
+                self.RegisterForce(force)
+                
+    def RegisterForce(self,force):
+        self.forces.append(force)
+        
+    def ApplyDrive(self,data):
+        for force in self.forces:
+            force.ApplyDrive(data)
