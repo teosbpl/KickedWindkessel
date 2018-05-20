@@ -87,8 +87,10 @@ class IntegrateAndFire:
                 else:
                     self.Phase = self.Phase - 1.0
         data[self.CoordinateNumberForOutput] = currentDrive
-        data[self.CoordinateNumberForPhase] = self.Phase
-        data[self.CoordinateNumberForRate] = effectiveR
+        if self.CoordinateNumberForPhase != -1:
+            data[self.CoordinateNumberForPhase] = self.Phase
+        if self.CoordinateNumberForRate != -1:
+            data[self.CoordinateNumberForRate] = effectiveR
         if doFire:            
             self.Notify(data)
 

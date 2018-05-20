@@ -230,7 +230,7 @@ class IntegrateAndFireTest(unittest.TestCase):
         """
         This test is a comparison of two IAFs: one with PRC and one without.
         """
-        npoints = 1000
+        npoints = 3100
         
         data = RungeKutta45IntegratorData(10,0.0)
 

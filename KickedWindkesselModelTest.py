@@ -10,6 +10,7 @@ import warnings
 #from enum import Enum
 import numpy as np
 import unittest
+import matplotlib.gridspec as gridspec
 #from scipy.integrate import ode
 import matplotlib.pyplot as plt
 import pdb
@@ -18,7 +19,7 @@ from AbpmFiducialPointsCollector import AbpmFiducialPointsCollector
 from Notifiers import SeriesNotifier, FiringTimesNotifier, NotifierChain
 from IntegrateAndFire import IntegrateAndFire, phaseEfectivenessCurveSH
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
-from HeartActionForce import RectangularHeartActionForce,RespiratoryDelayedSmearedHeartActionForce
+from HeartActionForce import RectangularHeartActionForce,RespiratoryDelayedSmearedHeartActionForce,HeartActionForceChain
 
 class KickedWindkesselModelTest(unittest.TestCase):
     """
@@ -49,43 +50,43 @@ class KickedWindkesselModelTest(unittest.TestCase):
         periods are commensurate (3:1) and initial phase of both is 0.
         """
         dimension = 10
-        npoints = 120  
+        npoints = 2400
         settings = KickedWindkesselModel.KickedWindkesselModelSettings() 
         
         fireNotifier = FiringTimesNotifier()        
         force = RespiratoryDelayedSmearedHeartActionForce()        
-        force.CoordinateNumber = 5 #Coordinate number, to  which the state will be written
-        force.KickAmplitude = 2.0 #Kick amplitude
+        force.CoordinateNumber = 9 #Coordinate number, to  which the state will be written
+        force.CoordinateNumberForInput = 6
+        force.KickAmplitude = 1.0 #Kick amplitude
         force.DelayTau = 0.1 #Time from firing order to actual kick
-        force.SamplingTime = 0.1 # required to normalize delay time.                
+        force.SamplingTime = 0.01 # required to normalize delay time.                
         force.DecayTau = 0.9 # Time by which the drive decays
         force.Notify = fireNotifier.Notify        
 
         iafResp = IntegrateAndFire()
+        iafResp.SamplingTime = 0.01
         iafResp.SetPhaseVelocityFromBPM(20)
-        iafResp.SamplingTime = 0.1
         iafResp.SetInitialPhase(0.0)
-        iafResp.KickAmplitude = 0.1
-        iafResp.SamplingTime = 0.1
-        iafResp.CoordinateNumberForRate = 7         
-        iafResp.CoordinateNumberForPhase = 6
+        iafResp.KickAmplitude = 0.1        
+        iafResp.CoordinateNumberForRate = -1
+        iafResp.CoordinateNumberForPhase = 5
         iafResp.CoordinateNumberForForceInput = -1 #not used
         # Coordinate number, to  which the state will be written
         #this variable will be used for coupling.
-        iafResp.CoordinateNumberForOutput = 4         
+        iafResp.CoordinateNumberForOutput = 6         
         fireNotifierResp = FiringTimesNotifier()
         iafResp.Notify = fireNotifierResp.Notify
         
 
         iafHeart = IntegrateAndFire()
-        iafHeart.SamplingTime = 0.1        
+        iafHeart.SamplingTime = 0.01        
         iafHeart.SetPhaseVelocityFromBPM(67)
         iafHeart.phaseEfectivenessCurve = phaseEfectivenessCurveSH
-        iafHeart.CoordinateNumberForRate = 0
-        iafHeart.CoordinateNumberForPhase = 1
+        iafHeart.CoordinateNumberForRate = 8
+        iafHeart.CoordinateNumberForPhase = 7
         iafHeart.CoordinateNumberForForceInput = force.CoordinateNumber        
         # Coordinate number, to  which the state will be written        
-        iafHeart.CoordinateNumberForOutput = 2 
+        iafHeart.CoordinateNumberForOutput = 4 
         fireNotifierHeart = FiringTimesNotifier()
         iafHeart.Notify = fireNotifierHeart.Notify
 
@@ -101,55 +102,58 @@ class KickedWindkesselModelTest(unittest.TestCase):
         model.Notify = chain.Notify
             
         model.IterateToNotifiers()
-            
-        for t in allTimes:
-            data.t = t            
-            data.y[0] = 0.0 # reset only the variable which gets set manually 
-            # to prevent constant firing
-            iafResp.ApplyDrive(data)
-            if data[iafResp.CoordinateNumberForOutput] > 0.0:            
-                data.y[0] = 1.0
-                force.FireOrderTime = t
-            logging.debug(data)
-            force.ApplyDrive(data) # will open or not.
-            iafHeart.ApplyDrive(data)
-            seriesNotifier.Notify(data)
-                    
+                                
         #print("Firing times: %s" % str(fireNotifier.firingTimes))
         fig = plt.figure()
-        plt.subplot(5, 1, 1)
-        plt.plot(allTimes,seriesNotifier.GetVar(6),"b")
-        plt.plot(fireNotifierResp.firingTimes,fireNotifierResp.firingTimesSpikes(),"bo")        
-        plt.ylabel("Resp. phase [1/rad]")
-        plt.xlabel("Time [s]")
+        gs = gridspec.GridSpec(6,1,
+                               height_ratios = [1,2,2,2,2,4]
+                               )
+        ax = plt.subplot(gs[0])
+        plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForPhase),"b")
+        plt.plot(fireNotifierResp.firingTimes,fireNotifierResp.firingTimesSpikes(),"bo")
+        plt.yticks([0.0,1.0])
+        plt.ylabel(r"$\Phi(t)$")
+        #plt.xlabel("Time [s]")
         plt.ylim(0.0,1.2)
-        
-        plt.subplot(5, 1, 2)
-        plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
+        plt.setp(ax.get_xticklabels(), visible = False)
+        ax = plt.subplot(gs[1])
+        #todo: the guy below is all flat.
+        #plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
         plt.plot(fireNotifier.firingTimes,fireNotifier.firingTimesSpikes(),"go")
         plt.plot(allTimes,seriesNotifier.GetVar(force.CoordinateNumber),"g",linewidth=2)      
-
-        plt.xlabel("Time [s]")
-        plt.ylabel("Force")
+        plt.yticks([])
+        plt.setp(ax.get_xticklabels(), visible = False)        
+        #plt.xlabel("Time [s]")
+        plt.ylabel(r"$r_{n}(t)$")
         #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
-        plt.subplot(5, 1, 3)
-        plt.ylabel("Heart phase velocity")                
+        ax = plt.subplot(gs[2])
+        plt.yticks([])
+        plt.ylabel(r"$r(t)$")                
         plt.plot(allTimes,seriesNotifier.GetVar(iafHeart.CoordinateNumberForRate),"v")
+        plt.setp(ax.get_xticklabels(), visible = False)
         
-        plt.subplot(5, 1, 4)
+        ax = plt.subplot(gs[3])
         plt.plot(allTimes,seriesNotifier.GetVar(iafHeart.CoordinateNumberForPhase),"r")
         #plt.plot(allTimes,seriesNotifier.GetVar(2),"r")
         plt.plot(fireNotifierHeart.firingTimes,fireNotifierHeart.firingTimesSpikes(),"ro")
-        plt.ylim(0.0,1.2)        
-        plt.xlabel("Time [s]")
-        plt.ylabel("Heart Phase")
+        plt.ylim(0.0,1.2)
+        plt.yticks([0.0,1.0])
+        #plt.xlabel("Time [s]")
+        plt.ylabel(r"$\varphi(t)$")
         #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
-
-        plt.subplot(5, 1, 5)
+        plt.setp(ax.get_xticklabels(), visible = False)
+        
+        ax = plt.subplot(gs[4])
         plt.ylabel("ISI")                
         plt.plot(fireNotifierHeart.firingTimes[1:],fireNotifierHeart.ISI()[1:],"b+-")
-
+        plt.setp(ax.get_xticklabels(), visible = False)
         
+        plt.subplot(gs[5])        
+        for varNumber in (0,1,2,3):         
+            plt.plot(allTimes,seriesNotifier.GetVar(varNumber))
+        plt.ylim(0.0,300.0)
+        plt.xlabel("Time [s]")
+        plt.ylabel("BP [mmHg]")
         fname = sys._getframe().f_code.co_name + ".png"
         print("Test result in %s" % fname)
         plt.savefig(fname)         
@@ -157,17 +161,12 @@ class KickedWindkesselModelTest(unittest.TestCase):
         pass
     def test_RespiratoryPeriod(self):
         pass
-           
-        plt.savefig("test_RespiratoryDelayedSmearedHeartActionForce.png")
+                   
 def main():
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     unittest.main()
 
 if __name__ == "__main__":
     main()   
-
-
-if __name__ == "__main__":
-    BasicProcessor()
 

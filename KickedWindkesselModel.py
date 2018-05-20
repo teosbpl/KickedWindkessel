@@ -48,7 +48,12 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
     As both phases should.    
     """
 
-    p_a, p_c, p_v, p_I, startKick = y
+    #p_a, p_c, p_v, p_I, startKick = y
+    p_a = y[0]
+    p_c = y[1]
+    p_v = y[2] 
+    p_I = y[3] 
+    startKick = y[4]
     # If the Windkessel is kicked start the heart flow
     #the heart flow is active in a rectangle:
     #from heartFlowBeginTime for heartFlowTimespan
@@ -138,7 +143,7 @@ class KickedWindkesselModel:
             self.data[1] = 35.0#;//P(1) = 35;%25;%95;%Pb
             self.data[2] = 45.0#;//P(3) = 45;%35;%70;%Pv % bylo 30 i zle asymtotyczni    
             self.data[3] = settings.p_I0#; 
-            self.data[4] = 0#;
+            self.data[4] = 0.0
             
             self.integrator = RungeKutta45ConstStepIntegrator(self.param,self.data,kickedWindkesselRHS)#,lambda t,y: f(t,y,self.settings),self.data)
                  
@@ -163,7 +168,7 @@ class KickedWindkesselModel:
                 if not self.integrator.Iterate(self.settings):
                     logging.info("Iterations completed.")
                     break
-                
+                logging.debug(self.data)
                 self.Notify(self.data)
                 
 

@@ -92,9 +92,9 @@ class RespiratoryDelayedSmearedHeartActionForce:
     def ApplyDrive(self,data):
         if data[self.CoordinateNumberForInput] > 0.0:            
                 data[self.CoordinateNumberForInput] = 0.0#reset the kick signal
-                self.FireOrderTime = t
+                self.FireOrderTime = data.t
         justOpened = False
-        if self.FireOrderTime: #is not None
+        if self.FireOrderTime and data.t >= self.FireOrderTime: #is not None
             #waiting for delay time
             timeFromFireOrderTime = data.t - self.FireOrderTime
             if timeFromFireOrderTime >= self.DelayTau:
