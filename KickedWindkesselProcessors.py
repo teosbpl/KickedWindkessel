@@ -174,9 +174,8 @@ def StandardModelSetup(dimension,npoints):
         return settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier
         
 
-def PhaseShiftProcessor():
-    #stepShiftLinspace = np.linspace(-0.5,1.25,20)
-    stepShiftLinspace = np.linspace(0,3.0,50)
+def PhaseShiftProcessor(npoints=4000,firstAfterWarmup=25,kickAmplitude=0.04,p_I1=2.0,respBPM =20.0,basalValues = [0.0,0.0,0.0],stepShiftLinspace= np.linspace(0,3.0,20)):
+    #stepShiftLinspace = np.linspace(-0.5,1.25,20)    
     #stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
     Sav = []
     Ssd = []
@@ -188,12 +187,14 @@ def PhaseShiftProcessor():
     for n,stepShift in enumerate(stepShiftLinspace):
     
         dimension = 10
-        npoints = 3600
-        npoints = 5000
+        #npoints = 3600
+        #npoints = 4000
         settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier = StandardModelSetup(dimension,npoints)
         force.DelayTau = stepShift
-        force.KickAmplitude = 0.02
-        #model.settings.p_I1 = 3.0 # default is 0.1
+        force.KickAmplitude = kickAmplitude
+        model.settings.p_I1 = p_I1 # default is 2.0
+        
+        iafResp.SetPhaseVelocityFromBPM(respBPM)
         model.IterateToNotifiers()
         allItems = collector.GetFiducialPointsList()
         allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
@@ -209,7 +210,7 @@ def PhaseShiftProcessor():
 #        print(allItems)    
         averages = []
         standard_deviations = []
-        firstAfterWarmup = 30
+        #firstAfterWarmup = 25
         skipThisLine = False
         for channel in [1,2,3]:# 1-systloic 2-diastolic 3-mean
             averages.append(np.mean(allItems[firstAfterWarmup:,channel]))
@@ -243,16 +244,20 @@ def PhaseShiftProcessor():
         Msd.append(standard_deviations[2])
         print("%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(n,force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
 
-    #normalize values 
-    basalValue = Ssd[0]
+    #normalize values
+    if basalValues[0] == 0.0:
+    	basalValues[0] = Ssd[0]
+    if basalValues[1] == 0.0:
+    	basalValues[1] = Dsd[0]
+    if basalValues[2] == 0.0:
+    	basalValues[2] = Msd[0]
+
     for i,v in enumerate(Ssd):
-        Ssd[i] = 100.0 * (v / basalValue)
-    basalValue = Dsd[0]
+        Ssd[i] = 100.0 * (v / basalValues[0])
     for i,v in enumerate(Dsd):
-        Dsd[i] = 100.0 * (v / basalValue)
-    basalValue = Msd[0]
+        Dsd[i] = 100.0 * (v / basalValues[1])
     for i,v in enumerate(Msd):
-        Msd[i] = 100.0 * (v / basalValue)
+        Msd[i] = 100.0 * (v / basalValues[2])
 
     #pdb.set_trace()        
     fig,ax = plt.subplots()
@@ -287,12 +292,14 @@ def PhaseShiftProcessor():
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    
     #ax.set_ylim(60,140)
-    plt.savefig("phaseShiftProcessor.png")
-    plt.show()
+    plt.savefig("phaseShiftProcessor_r0-%lf_pI1-%lf_resp%lf.png" % (kickAmplitude,model.settings.p_I1,respBPM))
+    plt.close(fig)
+    #plt.show()
+    return basalValues
 
-def KickAmplitudeProcessor():
+def KickAmplitudeProcessor(npoints=4000,firstAfterWarmup=25,forceDelayTau=0.04,forceDecayTau=0.3,p_I1=2.0,respBPM =20.0,basalValues = [0.0,0.0,0.0],KickAmplitudeLinspace= np.linspace(0,0.04,20)):
     #stepShiftLinspace = np.linspace(-0.5,1.25,20)
-    KickAmplitudeLinspace = np.linspace(0,0.1,50)
+    #KickAmplitudeLinspace = np.linspace(0,0.1,50)
     #stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
     Sav = []
     Ssd = []
@@ -304,12 +311,14 @@ def KickAmplitudeProcessor():
     for n,kickAmplitude in enumerate(KickAmplitudeLinspace):
     
         dimension = 10
-        npoints = 3600
-        npoints = 5000
         settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier = StandardModelSetup(dimension,npoints)
-        #force.DelayTau = stepShift
+        
+        force.DelayTau = forceDelayTau
+        force.DecayTau = forceDecayTau
         force.KickAmplitude = kickAmplitude
-        #model.settings.p_I1 = 3.0 # default is 0.1
+        model.settings.p_I1 = p_I1 # default is 2.0
+        
+        iafResp.SetPhaseVelocityFromBPM(respBPM)
         model.IterateToNotifiers()
         allItems = collector.GetFiducialPointsList()
         allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
@@ -325,7 +334,7 @@ def KickAmplitudeProcessor():
 #        print(allItems)    
         averages = []
         standard_deviations = []
-        firstAfterWarmup = 30
+        
         skipThisLine = False
         for channel in [1,2,3]:# 1-systloic 2-diastolic 3-mean
             averages.append(np.mean(allItems[firstAfterWarmup:,channel]))
@@ -359,16 +368,20 @@ def KickAmplitudeProcessor():
         Msd.append(standard_deviations[2])
         print("%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%d"%(n,force.DelayTau,averages[0],standard_deviations[0],averages[1],standard_deviations[1],averages[2],standard_deviations[2],len(allItems)))
 
-    #normalize values 
-    basalValue = Ssd[0]
+    #normalize values
+    if basalValues[0] == 0.0:
+    	basalValues[0] = Ssd[0]
+    if basalValues[1] == 0.0:
+    	basalValues[1] = Dsd[0]
+    if basalValues[2] == 0.0:
+    	basalValues[2] = Msd[0]
+
     for i,v in enumerate(Ssd):
-        Ssd[i] = 100.0 * (v / basalValue)
-    basalValue = Dsd[0]
+        Ssd[i] = 100.0 * (v / basalValues[0])
     for i,v in enumerate(Dsd):
-        Dsd[i] = 100.0 * (v / basalValue)
-    basalValue = Msd[0]
+        Dsd[i] = 100.0 * (v / basalValues[1])
     for i,v in enumerate(Msd):
-        Msd[i] = 100.0 * (v / basalValue)
+        Msd[i] = 100.0 * (v / basalValues[2])
 
     #pdb.set_trace()        
     fig,ax = plt.subplots()
@@ -403,11 +416,40 @@ def KickAmplitudeProcessor():
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    
     #ax.set_ylim(60,140)
-    plt.savefig("kickAmplitudeProcessor.png")
-    plt.show()
-
+    plt.savefig("kickAmplitudeProcessor_r0-%lf_pI1-%lf_resp%lf_decay%lf.png" % (kickAmplitude,model.settings.p_I1,respBPM,forceDecayTau))
+    #plt.show()
+    plt.close(fig)
+    #plt.show()
+    return basalValues
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    #PhaseShiftProcessor()
-    KickAmplitudeProcessor()
+    #logging.basicConfig(level=logging.INFO)
+    npoints=4000
+    firstAfterWarmup=25
+    p_I1 = 3.0
+    respBPM =20.0
+    basalValues = [0.0,0.0,0.0]
+    basalValues0 = [0.0,0.0,0.0]
+    doPhaseShift = False
+    doKickAmplitude = True
+    if doPhaseShift:
+        kickAmplitudeLinspace = np.linspace(0,0.03,100)
+        stepShiftLinspace = np.linspace(0,3.0,100)    
+        for i,kickAmplitude in enumerate(kickAmplitudeLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
+        	print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
+        	if i ==0:
+        		basalValues0 = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues,stepShiftLinspace))
+        	else:
+        		basalValues = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
+    elif doKickAmplitude:
+        KickAmplitudeLinspace = np.linspace(0.0,0.0,1)
+        forceDelayTau=0.5 # dummy as there is no input
+        forceDecayTau=0.3 # dummy as there is no input
+        basalValues0 = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues,KickAmplitudeLinspace))
+        
+        decayTauLinspace = np.linspace(0.1,3.1,100)
+        decayTauLinspace = np.linspace(0.05,0.25,100)
+        KickAmplitudeLinspace = np.linspace(0.0,0.1,100)
+        for i,forceDecayTau in enumerate(decayTauLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
+            print("============================= forceDecayTau %lf normed by %s ========================= " %(forceDecayTau,basalValues0))        
+            basalValues = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues0,KickAmplitudeLinspace))
