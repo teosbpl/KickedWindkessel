@@ -75,7 +75,8 @@ class IntegrateAndFire:
         """
         currentDrive = 0.0
         if self.CoordinateNumberForForceInput >= 0:
-            effectiveR = self.r +  data[self.CoordinateNumberForForceInput] * self.phaseEfectivenessCurve(self.Phase)                
+#            effectiveR = self.r / (1.0 +  data[self.CoordinateNumberForForceInput] * self.phaseEfectivenessCurve(self.Phase))
+            effectiveR = self.r  +  data[self.CoordinateNumberForForceInput] * self.phaseEfectivenessCurve(self.Phase)
         else:
             effectiveR = self.r
         self.Phase = self.Phase + effectiveR #at each time step        

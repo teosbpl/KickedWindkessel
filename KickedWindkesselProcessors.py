@@ -430,17 +430,17 @@ if __name__ == "__main__":
     respBPM =20.0
     basalValues = [0.0,0.0,0.0]
     basalValues0 = [0.0,0.0,0.0]
-    doPhaseShift = False
-    doKickAmplitude = True
+    doPhaseShift = True
+    doKickAmplitude = False
     if doPhaseShift:
-        kickAmplitudeLinspace = np.linspace(0,0.03,100)
-        stepShiftLinspace = np.linspace(0,3.0,100)    
+        # normalization
+        basalValues0 = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+        
+        kickAmplitudeLinspace = np.linspace(1.0,10.0,20)
+        stepShiftLinspace = np.linspace(0,3.0,50)    
         for i,kickAmplitude in enumerate(kickAmplitudeLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
         	print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
-        	if i ==0:
-        		basalValues0 = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues,stepShiftLinspace))
-        	else:
-        		basalValues = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
+        	basalValues = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
     elif doKickAmplitude:
         KickAmplitudeLinspace = np.linspace(0.0,0.0,1)
         forceDelayTau=0.5 # dummy as there is no input
