@@ -8,6 +8,7 @@ import copy
 import logging
 import pdb
 import sys
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 from KickedWindkesselModel import KickedWindkesselModel
@@ -20,32 +21,46 @@ from KickedWindkesselProcessors import StandardModelSetup,PhaseShiftProcessor,Ki
 
 def GenerateFig4():
     #logging.basicConfig(level=logging.INFO)
-    npoints=4000
-    firstAfterWarmup=25
-    p_I1 = 3.0
-    respBPM =20.0
-    kickAmplitude = -0.17
-    basalValues = [0.0,0.0,0.0]
-    basalValues0 = [0.0,0.0,0.0]
-    
-#            fname = sys._getframe().f_code.co_name + "_delay_%f.png" % (stepShift)
-#            KickedWindkesselModelVisualization(fname,
-#                                       allTimes,
-#                                       allItems,
-#                                       seriesNotifier,
-#                                       fireNotifierResp,
-#                                       fireNotifier,
-#                                       fireNotifierHeart,
-#                                       iafResp.CoordinateNumberForPhase,
-#                                       force.CoordinateNumber,
-#                                       iafHeart.CoordinateNumberForRate,
-#                                       iafHeart.CoordinateNumberForPhase)    
-    basalValues0,values,_ = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+    binDumpFileName = "Fig4CalcDump.bin"
+    stepShiftLinspace = np.linspace(0,3.0,200)
+    if os.path.isfile(binDumpFileName):
+        values = np.fromfile(binDumpFileName)
+        Sav = values[0:200]
+        Ssd = values[200:400]
+        Dav = values[400:600]
+        Dsd = values[600:800]
+        Mav = values[800:1000]
+        Msd = values[1000:1200]
+
+        #pdb.set_trace()
+    else:
+        npoints=4000
+        firstAfterWarmup=25
+        p_I1 = 3.0
+        respBPM =20.0
+        kickAmplitude = -0.017
+        basalValues = [0.0,0.0,0.0]
+        basalValues0 = [0.0,0.0,0.0]
         
-    stepShiftLinspace = np.linspace(0,3.0,10)    
-    print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
-    basalValues,values,setOfModelObjects = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))    
-    (Sav,Ssd,Dav,Dsd,Mav,Msd) = values
+    #            fname = sys._getframe().f_code.co_name + "_delay_%f.png" % (stepShift)
+    #            KickedWindkesselModelVisualization(fname,
+    #                                       allTimes,
+    #                                       allItems,
+    #                                       seriesNotifier,
+    #                                       fireNotifierResp,
+    #                                       fireNotifier,
+    #                                       fireNotifierHeart,
+    #                                       iafResp.CoordinateNumberForPhase,
+    #                                       force.CoordinateNumber,
+    #                                       iafHeart.CoordinateNumberForRate,
+    #                                       iafHeart.CoordinateNumberForPhase)    
+        basalValues0,values,_ = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+            
+        
+        print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
+        basalValues,values,setOfModelObjects = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
+        np.array(values).tofile("Fig4CalcDump.bin")
+        (Sav,Ssd,Dav,Dsd,Mav,Msd) = values
     #pdb.set_trace()        
     fig,ax = plt.subplots()
     ax.ticklabel_format(useOffset = False)
@@ -63,8 +78,8 @@ def GenerateFig4():
     plt.xlabel("Delay time (s)")
     ylim = copy.deepcopy(ax.get_ylim())# keep original limits.\
     xlim = copy.deepcopy(ax.get_xlim())# keep original limits.\    
-    leftAreaRightEdge = 0.88
-    rightAreaLeftEdge = 2.88
+    leftAreaRightEdge = 0.9
+    rightAreaLeftEdge = 2.23
     
 #==============================================================================
     ax.fill([0,0,leftAreaRightEdge,leftAreaRightEdge,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
@@ -86,7 +101,33 @@ def GenerateFig4():
     #plt.show()
 
 def GenerateFig5():
-    pass
+
+    npoints=4000
+    firstAfterWarmup=25
+    p_I1 = 3.0
+    respBPM =20.0
+    kickAmplitude = -0.017
+    basalValues = [0.0,0.0,0.0]
+    basalValues0 = [0.0,0.0,0.0]    
+    kickAmplitude = -0.017
+    basalValues0,values,setOfModelObjects = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+    settings, model, force, iafResp, iafHeart, collector, seriesNotifier, fireNotifierResp, fireNotifierHeart, fireNotifier = setOfModelObjects
+    fname = sys._getframe().f_code.co_name + "kick_%f.png" % (kickAmplitude)
+    allTimes = np.linspace(0.0,npoints*force.SamplingTime,npoints)
+    allItems = collector.GetFiducialPointsList()
+    KickedWindkesselModelVisualization(fname,
+                                           allTimes,
+                                           allItems,
+                                           seriesNotifier,
+                                           fireNotifierResp,
+                                           fireNotifier,
+                                           fireNotifierHeart,
+                                           iafResp.CoordinateNumberForPhase,
+                                           force.CoordinateNumber,
+                                           iafHeart.CoordinateNumberForRate,
+                                           iafHeart.CoordinateNumberForPhase)    
+        
+         
 
 if __name__ == "__main__":
     GenerateFig4()

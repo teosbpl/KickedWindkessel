@@ -143,7 +143,7 @@ def StandardModelSetup(dimension,npoints):
 
         iafHeart = IntegrateAndFire()
         iafHeart.SamplingTime = 0.01        
-        iafHeart.SetPhaseVelocityFromBPM(66)
+        iafHeart.SetPhaseVelocityFromBPM(66) #45 worked OK
         iafHeart.phaseEfectivenessCurve = phaseEfectivenessCurveSH
         iafHeart.CoordinateNumberForRate = 8
         iafHeart.CoordinateNumberForPhase = 7

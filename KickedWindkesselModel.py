@@ -110,8 +110,8 @@ class KickedWindkesselModel:
                 self.Cc = 4.3
                 self.Cv = 100.0
                 self.Zca = 1 / 0.006 # 166.[6]
-                self.Zav = 1 / 0.9
-                self.Zvc = 1 / 0.005
+                self.Zav = 1 / 0.8 # was 0.9 TB 27.05.2018
+                self.Zvc = 1 / 0.37 # was 0.005 TB 27.05.2018
                 #breathing
                 self.p_I0 = -4.0
                 self.p_I1 = 2.0

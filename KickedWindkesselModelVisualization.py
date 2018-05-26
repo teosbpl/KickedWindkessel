@@ -82,7 +82,7 @@ def KickedWindkesselModelVisualization(fname,
         plt.plot(allItems[:,0],allItems[:,2],"go") # diastolic
         plt.plot(allItems[:,0],allItems[:,3],"bo") # mean
         
-        plt.ylim(100.0,300.0)
+        #plt.ylim(100.0,300.0)
         plt.xlabel("Time [s]")
         plt.ylabel("BP [mmHg]")        
         logging.info("Test result in %s" % fname)
