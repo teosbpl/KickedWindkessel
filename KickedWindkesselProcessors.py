@@ -111,6 +111,7 @@ def PhaseShiftProcessorOld():
     ax.set_xlim([xlim[0],xlim[1]])    
     plt.savefig("phaseShiftFunction100.png")
     plt.show()
+    return (Sav, Ssd, Dav, Dsd, Mav, Msd), (settings, model, force, iafResp, iafHeart, collector, seriesNotifier, fireNotifierResp, fireNotifierHeart, fireNotifier)
 
 def StandardModelSetup(dimension,npoints):
         settings = KickedWindkesselModel.KickedWindkesselModelSettings() 
@@ -171,7 +172,7 @@ def StandardModelSetup(dimension,npoints):
         chain = NotifierChain((mmNotifier,collector,seriesNotifier))
         model.Notify = chain.Notify
         
-        return settings,model,force,iafResp,iafHeart,collector,seriesNotifier,fireNotifierResp,fireNotifierHeart,fireNotifier
+        return settings, model, force, iafResp, iafHeart, collector, seriesNotifier, fireNotifierResp, fireNotifierHeart, fireNotifier
         
 
 def PhaseShiftProcessor(npoints=4000,firstAfterWarmup=25,kickAmplitude=0.04,p_I1=2.0,respBPM =20.0,basalValues = [0.0,0.0,0.0],stepShiftLinspace= np.linspace(0,3.0,20)):
@@ -295,7 +296,7 @@ def PhaseShiftProcessor(npoints=4000,firstAfterWarmup=25,kickAmplitude=0.04,p_I1
     plt.savefig("phaseShiftProcessor_r0-%lf_pI1-%lf_resp%lf.png" % (kickAmplitude,model.settings.p_I1,respBPM))
     plt.close(fig)
     #plt.show()
-    return basalValues
+    return basalValues,(Sav,Ssd,Dav,Dsd,Mav,Msd),(settings, model, force, iafResp, iafHeart, collector, seriesNotifier, fireNotifierResp, fireNotifierHeart, fireNotifier)
 
 def KickAmplitudeProcessor(npoints=4000,firstAfterWarmup=25,forceDelayTau=0.04,forceDecayTau=0.3,p_I1=2.0,respBPM =20.0,basalValues = [0.0,0.0,0.0],KickAmplitudeLinspace= np.linspace(0,0.04,20)):
     #stepShiftLinspace = np.linspace(-0.5,1.25,20)
@@ -416,11 +417,13 @@ def KickAmplitudeProcessor(npoints=4000,firstAfterWarmup=25,forceDelayTau=0.04,f
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    
     #ax.set_ylim(60,140)
-    plt.savefig("kickAmplitudeProcessor_r0-%lf_pI1-%lf_resp%lf_decay%lf.png" % (kickAmplitude,model.settings.p_I1,respBPM,forceDecayTau))
+    fname = "kickAmplitudeProcessor_r0-%lf_pI1-%lf_resp%lf_decay%lf-delay%lf.png" % (kickAmplitude,model.settings.p_I1,respBPM,forceDecayTau,forceDelayTau)
+    print("Writing to: %s" % (fname))
+    plt.savefig(fname)
     #plt.show()
     plt.close(fig)
     #plt.show()
-    return basalValues
+    return basalValues,(Sav,Ssd,Dav,Dsd,Mav,Msd),(settings, model, force, iafResp, iafHeart, collector, seriesNotifier, fireNotifierResp, fireNotifierHeart, fireNotifier)
 
 if __name__ == "__main__":
     #logging.basicConfig(level=logging.INFO)
@@ -430,26 +433,52 @@ if __name__ == "__main__":
     respBPM =20.0
     basalValues = [0.0,0.0,0.0]
     basalValues0 = [0.0,0.0,0.0]
-    doPhaseShift = True
-    doKickAmplitude = False
-    if doPhaseShift:
+    doFinalShift = True
+    doPhaseShift = False
+    doDecay = False
+    doKickAmplitude = False    
+    if doFinalShift:
         # normalization
-        basalValues0 = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+        basalValues0,values = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
         
-        kickAmplitudeLinspace = np.linspace(1.0,10.0,20)
+        #kickAmplitudeLinspace = np.linspace(1.0,10.0,20)
+        kickAmplitudeLinspace = np.linspace(-0.031,-0.001,31)
+        stepShiftLinspace = np.linspace(0,3.0,100)    
+        for i,kickAmplitude in enumerate(kickAmplitudeLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
+        	print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
+        	basalValues,values = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))    
+    elif doPhaseShift:
+        # normalization
+        basalValues0,values = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
+        
+        #kickAmplitudeLinspace = np.linspace(1.0,10.0,20)
+        kickAmplitudeLinspace = np.linspace(-0.05,-0.001,20)
         stepShiftLinspace = np.linspace(0,3.0,50)    
         for i,kickAmplitude in enumerate(kickAmplitudeLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
         	print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
-        	basalValues = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
-    elif doKickAmplitude:
+        	basalValues,values = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
+    elif doDecay:
         KickAmplitudeLinspace = np.linspace(0.0,0.0,1)
         forceDelayTau=0.5 # dummy as there is no input
         forceDecayTau=0.3 # dummy as there is no input
-        basalValues0 = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues,KickAmplitudeLinspace))
+        basalValues0,values = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues,KickAmplitudeLinspace))
         
         decayTauLinspace = np.linspace(0.1,3.1,100)
         decayTauLinspace = np.linspace(0.05,0.25,100)
         KickAmplitudeLinspace = np.linspace(0.0,0.1,100)
         for i,forceDecayTau in enumerate(decayTauLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
             print("============================= forceDecayTau %lf normed by %s ========================= " %(forceDecayTau,basalValues0))        
-            basalValues = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues0,KickAmplitudeLinspace))
+            basalValues,values = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues0,KickAmplitudeLinspace))
+    elif doKickAmplitude:
+        KickAmplitudeLinspace = np.linspace(0.0,0.0,1)
+        forceDelayTau=0.5 # dummy as there is no input
+        forceDecayTau=0.3 # dummy as there is no input
+        basalValues0,values = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues,KickAmplitudeLinspace))
+        
+        #decayTauLinspace = np.linspace(0.1,3.1,100)
+        #decayTauLinspace = np.linspace(0.05,0.25,100)
+        stepShiftLinspace = np.linspace(0,3.0,20)
+        KickAmplitudeLinspace = np.linspace(0.0,-0.5,50)
+        for i,forceDelayTau in enumerate(stepShiftLinspace):#[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5]:
+            print("============================= forceDecayTau %lf normed by %s ========================= " %(forceDecayTau,basalValues0))        
+            basalValues,values = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues0,KickAmplitudeLinspace))
