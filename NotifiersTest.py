@@ -16,9 +16,9 @@ from HeartActionForce import RectangularHeartActionForce
 
 class NotifiersTest(unittest.TestCase):
 
-    def test_min_max_notifier(self): 
+    def test_min_max_notifier(self):
         data = RungeKutta45IntegratorData(2,0.0)
-        mmNotifier = MinMaxNotifier(0)#first variable        
+        mmNotifier = MinMaxNotifier(0)#first variable
         npoints = 1000
         seriesNotifier = SeriesNotifier(2,npoints)
         notifier = NotifierChain((mmNotifier,seriesNotifier))
@@ -28,23 +28,23 @@ class NotifiersTest(unittest.TestCase):
             data.t = t
             data.y[0] = 10.0 * np.cos(2 * np.pi * t / period)
             data.y[1] = 10.0 * np.sin(2 * np.pi * t / period)
-            
+
             notifier.Notify(data)
         maxTime,maxValue,maxIterator = mmNotifier.getMaxima()
         minTime,minValue,minIterator = mmNotifier.getMinima()
         allValues = seriesNotifier.GetVar(0)
         fig = plt.figure()
         plt.ylim(-12.0,12.0)
-        plt.plot(allTimes,allValues)        
+        plt.plot(allTimes,allValues)
         plt.plot(minTime,minValue,"bo")
         plt.plot(maxTime,maxValue,"r*")
         plt.show()
     def test_stats_notifier(self):
-        settings = KickedWindkesselModel.KickedWindkesselModelSettings()    
+        settings = KickedWindkesselModel.KickedWindkesselModelSettings()
         settings.heartActionForce = RectangularHeartActionForce()
         model = KickedWindkesselModel(settings)
         model.param.Npoints = 1000
-        stats = StatsNotifier(model.param.dimension)        
+        stats = StatsNotifier(model.param.dimension)
         model.Notify = stats.Notify
         model.IterateToNotifiers()
         AV,SD = stats.GetStats()
@@ -53,8 +53,8 @@ class NotifiersTest(unittest.TestCase):
 
 def main():
 
-        logging.basicConfig(level=logging.DEBUG)    
+        logging.basicConfig(level=logging.DEBUG)
         unittest.main()
 
 if __name__ == "__main__":
-    main()       
+    main()
