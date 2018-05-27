@@ -19,10 +19,6 @@ from KickedWindkesselModelVisualization import KickedWindkesselModelVisualizatio
 
 def PhaseShiftProcessorOld():
     logging.basicConfig(level=logging.ERROR)
-    # to jest procesor w funkcji fazy dla heart action force prostokątnego
-    #przerobić phase shift processor żeby korzystał z FiducialPoints
-    #przerobić też żeby miał nomenklaturę zgodną z publikacją i żeby wprowadzał opóźnienie w kick a nie
-    #w oddechu dorobić pętlę w funkcji amplitudy, ale hmm gdzie tu jest amplituda?
     stepShiftLinspace = np.linspace(0,1.25,10)
     stepShiftLinspace = np.linspace(0,2.0*np.pi,100)
     Sav = []
@@ -94,19 +90,7 @@ def PhaseShiftProcessorOld():
     ylim = copy.deepcopy(ax.get_ylim())# keep original limits.\
     xlim = copy.deepcopy(ax.get_xlim())# keep original limits.\    
     
-    
-#==============================================================================
-#     ax.fill([0,0,1,1,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
-#     offsetOfHalf = len(Msd)/2
-#     rightHalfMsd = np.array(Msd[offsetOfHalf:])
-#     print(rightHalfMsd)
-#     rightLargerThan100 = np.where(rightHalfMsd>100)[0][0]
-#     rightHatchedEdge = stepShiftLinspace[offsetOfHalf+rightLargerThan100]
-#     print(rightHatchedEdge)
-#     ax.fill([rightHatchedEdge,rightHatchedEdge,xlim[1],xlim[1],rightHatchedEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
-# 
-#==============================================================================
-    #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
+
     ax.set_ylim([ylim[0],ylim[1]])    
     ax.set_xlim([xlim[0],xlim[1]])    
     plt.savefig("phaseShiftFunction100.png")
