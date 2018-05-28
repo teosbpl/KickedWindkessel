@@ -32,29 +32,29 @@ def KickedWindkesselModelVisualization(fname,
         #plt.xlabel("Time [s]")
         plt.ylim(0.0,1.2)
         plt.setp(ax.get_xticklabels(), visible = False)
-        
 
-        ax = plt.subplot(gs[1])        
+
+        ax = plt.subplot(gs[1])
         plt.plot(allTimes,seriesNotifier.GetVar(3))
         plt.ylabel(r"$p_I(t)$")
         plt.setp(ax.get_xticklabels(), visible = False)
-        
+
         ax = plt.subplot(gs[2])
         #todo: the guy below is all flat.
         #plt.plot(allTimes,seriesNotifier.GetVar(iafResp.CoordinateNumberForOutput),"g",linewidth=2)
         plt.plot(fireNotifier.firingTimes,fireNotifier.firingTimesSpikes(),"go")
-        plt.plot(allTimes,seriesNotifier.GetVar(forceCoordinateNumber),"g",linewidth=2)      
+        plt.plot(allTimes,seriesNotifier.GetVar(forceCoordinateNumber),"g",linewidth=2)
         plt.yticks([])
-        plt.setp(ax.get_xticklabels(), visible = False)        
+        plt.setp(ax.get_xticklabels(), visible = False)
         #plt.xlabel("Time [s]")
         plt.ylabel(r"$r_{n}(t)$")
         #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
         ax = plt.subplot(gs[3])
         plt.yticks([])
-        plt.ylabel(r"$r(t)$")                
+        plt.ylabel(r"$r(t)$")
         plt.plot(allTimes,seriesNotifier.GetVar(iafHeartCoordinateNumberForRate),"v")
         plt.setp(ax.get_xticklabels(), visible = False)
-        
+
         ax = plt.subplot(gs[4])
         plt.plot(allTimes,seriesNotifier.GetVar(iafHeartCoordinateNumberForPhase),"r")
         #plt.plot(allTimes,seriesNotifier.GetVar(2),"r")
@@ -65,25 +65,25 @@ def KickedWindkesselModelVisualization(fname,
         plt.ylabel(r"$\varphi(t)$")
         #plt.ylim(0.0,5.0 * iafResp.KickAmplitude)
         plt.setp(ax.get_xticklabels(), visible = False)
-        
+
         ax = plt.subplot(gs[5])
         plt.ylabel("ISI")
         x = fireNotifierHeart.firingTimes[1:]
-        y = fireNotifierHeart.ISI()[1:]                        
+        y = fireNotifierHeart.ISI()[1:]
         logging.debug(x)
         logging.debug(y)
         plt.plot(x,y,"b+-")
         plt.ylim(0.0,2.0)
         plt.setp(ax.get_xticklabels(), visible = False)
-        
-        plt.subplot(gs[6])        
-        plt.plot(allTimes,seriesNotifier.GetVar(0),'b-')        
+
+        plt.subplot(gs[6])
+        plt.plot(allTimes,seriesNotifier.GetVar(0),'b-')
         plt.plot(allItems[:,0],allItems[:,1],"ro") # systolic
         plt.plot(allItems[:,0],allItems[:,2],"go") # diastolic
         plt.plot(allItems[:,0],allItems[:,3],"bo") # mean
-        
+
         #plt.ylim(100.0,300.0)
         plt.xlabel("Time [s]")
-        plt.ylabel("BP [mmHg]")        
+        plt.ylabel("BP [mmHg]")
         logging.info("Test result in %s" % fname)
-        plt.savefig(fname)   
+        plt.savefig(fname)

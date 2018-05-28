@@ -68,7 +68,6 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
         settings.heartFlowBeginTime = -1.0
         heartFlowIsOpen = False
 
-    #//Fs = 125; time step = 1/125 s
     q_ca = settings.Zca * (p_c - p_I)
     if not heartFlowIsOpen: # all or nothing
         q_ca = 0.0
@@ -79,11 +78,6 @@ def kickedWindkesselRHS(t,y,Freturn,settings):
     Freturn[1] = (q_vc - q_ca) / settings.Cc#;//p_c : //  C_c{dp_c}/{dt}=max(Z_{vc}p_{vc},0) - \sum_{i} \delta(t-t_i)Z_{ca}(p_c-p_I)
     Freturn[2] = (q_av - q_vc) / settings.Cv#;//p_v // //  C_v{dp_v}/{dt}= Z_{av}p_{av} - max(Z_{vc}p_{vc},0)
 
-    #to nie moze dzialac bo przeciez tu sie nie liczy wartosci zmiennej tylko RHS rownania.
-    #Freturn[3] = settings.p_I0 + settings.p_I1 * (1 + np.cos(settings.breathingPhi0 + 2 * np.pi * t / settings.breathingPeriod)) - p_I#;//p_I : //  p_I(t)=p_{I0}+p_{I1}(1+cos\:2\pi\Phi(t))
-    #print("t:%f\tF:%f\t%f\t%f\t%f"%(t,Freturn[0],Freturn[1],Freturn[2],Freturn[3]))
-    #print("p_a %lf p_c %lf p_v %lf p_I %lf" % (p_a, p_c, p_v, p_I))
-    #print("q_ca %lf q_vc %lf q_av %lf" % (q_ca,q_vc,q_av))
     return Freturn
 
 
@@ -109,12 +103,17 @@ class KickedWindkesselModel:
                 self.Ca = 1.6
                 self.Cc = 4.3
                 self.Cv = 100.0
+                #self.Cv = 80.0
                 self.Zca = 1 / 0.006 # 166.[6]
-                self.Zav = 1 / 0.8 # was 0.9 TB 27.05.2018
+                self.Zca = 1 / 0.01 # 166.[6]
+                self.Zav = 1 / 0.9 # was 0.9 TB 27.05.2018
                 self.Zvc = 1 / 0.37 # was 0.005 TB 27.05.2018
+                #self.Zvc = 1 / 0.25 # was 0.005 TB 27.05.2018
                 #breathing
                 self.p_I0 = -4.0
+                self.p_I0 = -6.6
                 self.p_I1 = 2.0
+                self.p_I1 = 1.5
                 self.breathingPeriod = 3.0
                 #self.breathingPhi0 = 0.0
                 self.heartPhase = 0.0

@@ -10,16 +10,16 @@ import matplotlib.pyplot as plt
 from RungeKutta45ConstStepIntegrator import RungeKutta45IntegratorData
 def NilNotify(data):
     pass
-    
+
 class SeriesNotifier:
-    def __init__(self,dimension,npoints):        
+    def __init__(self,dimension,npoints):
         self.dimension = dimension
         self.states = np.zeros((npoints,self.dimension+1))# all + time
-        self.statesIterator = 0            
+        self.statesIterator = 0
 
     def Notify(self,data):
         self.states[self.statesIterator,0] = data.t
-        for ii in range(self.dimension):                    
+        for ii in range(self.dimension):
             self.states[self.statesIterator,ii+1] = data.y[ii]
         self.statesIterator = self.statesIterator+1
     def GetVar(self,varNumber):
@@ -28,8 +28,8 @@ class SeriesNotifier:
     def PlotSeries(self,rangeOfVars,fileName = None):
         t = self.states[:,0]
         fig = plt.figure()
-        for varNumber in rangeOfVars:         
-            x = self.states[:,varNumber]        
+        for varNumber in rangeOfVars:
+            x = self.states[:,varNumber]
             plt.plot(t,x)
         if fileName:
             plt.savefig(fileName)
@@ -41,10 +41,10 @@ class StatsNotifier:
         self.dimension = dimension
         self.sumValues = np.zeros(self.dimension)
         self.sumSquares = np.zeros(self.dimension)
-        self.statesIterator = 0            
+        self.statesIterator = 0
 
     def Notify(self,data):
-        for ii in range(self.dimension):                    
+        for ii in range(self.dimension):
             self.sumValues[ii] = self.sumValues[ii] + data.y[ii]
             self.sumSquares[ii] = self.sumSquares[ii] + (data.y[ii] * data.y[ii])
         self.statesIterator = self.statesIterator+1
@@ -54,7 +54,7 @@ class StatsNotifier:
         """
         AV = np.zeros(self.dimension)
         SD = np.zeros(self.dimension)
-        for ii in range(self.dimension):                    
+        for ii in range(self.dimension):
             AV[ii] = (1.0 * self.sumValues[ii] / self.statesIterator)
             SD[ii] = np.sqrt((1.0 * self.sumSquares[ii] / self.statesIterator) - AV[ii]*AV[ii])
         return AV,SD
@@ -97,7 +97,7 @@ class MinMaxNotifier:
                 return +1
             else:
                 return -1
-            
+
         newValue  = data.y[self.varNumber]
         newTime = data.t
         if self.currentValue is None:
@@ -109,7 +109,7 @@ class MinMaxNotifier:
             return
         logging.debug("%lf -> %lf at trend: %lf" % (self.currentValue,newValue,self.trendDirection))
         #now the machine is ready to register.
-        #it is assumed that the plot is smooth. If it isn't better method 
+        #it is assumed that the plot is smooth. If it isn't better method
         #has to be used.
         #new value is larger at negative trend
         if newValue > self.currentValue and self.trendDirection < 0:
@@ -119,7 +119,7 @@ class MinMaxNotifier:
         if newValue < self.currentValue and self.trendDirection > 0:
             logging.debug("Is maximum: %lf" % self.currentValue)
             self.registerMaximum()
-        self.trendDirection = getTrendDirection(self.currentValue,newValue)                
+        self.trendDirection = getTrendDirection(self.currentValue,newValue)
         self.currentValue = newValue
         self.currentTime = newTime
     def getMaxima(self):
@@ -131,7 +131,7 @@ class MinMaxNotifier:
         if(self.minIterator < len(self.minTime)):
             self.minTime = self.minTime[0:self.minIterator]
             self.minValue = self.minValue[0:self.minIterator]
-        return self.minTime,self.minValue,self.minIterator        
+        return self.minTime,self.minValue,self.minIterator
         def IterateToNotifiers(self):
 
             self.integrator.Reset(self.param)
@@ -141,7 +141,7 @@ class NotifierChain:
         self.notifiers = []
         if notifiers:
             for notifier in notifiers:
-                self.RegisterNotifier(notifier)        
+                self.RegisterNotifier(notifier)
     def RegisterNotifier(self,notifier):
         self.notifiers.append(notifier)
     def Notify(self,data):
@@ -149,20 +149,19 @@ class NotifierChain:
             notifier.Notify(data)
 
 class FiringTimesNotifier:
-    
+
     def __init__(self):
         self.firingTimes = []
-        
+
     def Notify(self,data):
         self.firingTimes.append(data.t)
         logging.debug(self.firingTimes)
-        
+
     def firingTimesSpikes(self):
         return np.ones(len(self.firingTimes))
-        
+
     def ISI(self):
         """
         Returns ISI. Zero prepended to give the vector length euqal to that of times.
         """
         return np.ediff1d(np.array(self.firingTimes),to_begin=0)
-        
