@@ -62,6 +62,7 @@ def reduceTicksFrequency(yaxis,rate,offset):
 
 def GenerateFig4(resetDumpFile=False):
     #logging.basicConfig(level=logging.INFO)
+    logging.info("In %s"%(sys._getframe().f_code.co_name))
     binDumpFileName = "Fig4CalcDump.bin"
     if resetDumpFile and os.path.isfile(binDumpFileName):
         os.unlink(binDumpFileName)
@@ -91,7 +92,7 @@ def GenerateFig4(resetDumpFile=False):
         basalValues0,values,_ = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,0.0,p_I1,respBPM,basalValues,np.linspace(0.0,0.0,1)))
 
 
-        print("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
+        logging.info("============================= kickAmplitude %lf normed by %s ========================= " %(kickAmplitude,basalValues0))
         basalValues,values,setOfModelObjects = copy.deepcopy(PhaseShiftProcessor(npoints,firstAfterWarmup,kickAmplitude,p_I1,respBPM,basalValues0,stepShiftLinspace))
         np.array(values).tofile(binDumpFileName)
         (Sav,Ssd,Dav,Dsd,Mav,Msd) = values
@@ -112,16 +113,17 @@ def GenerateFig4(resetDumpFile=False):
     leftAreaRightEdge,rightAreaLeftEdge = findOuterLimits(stepShiftLinspace,Msd,100,0.65)
     ax.fill([0,0,leftAreaRightEdge,leftAreaRightEdge,0],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
     ax.fill([rightAreaLeftEdge,rightAreaLeftEdge,xlim[1],xlim[1],rightAreaLeftEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
+    logging.info("Edges detected at: %lf and %lf" % (leftAreaRightEdge,rightAreaLeftEdge))
     #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
     ax.set_ylim([ylim[0],ylim[1]])
     ax.set_xlim([xlim[0],xlim[1]])
     fname = "Fig4.png"
     plt.savefig(fname)
-    print("Writing to: %s" % (fname))
+    logging.info("Writing to: %s" % (fname))
     #plt.show()
 
 def GenerateFig5(resetDumpFile=False):
-    #logging.basicConfig(level=logging.INFO)
+    logging.info("In %s"%(sys._getframe().f_code.co_name))
     binDumpFileName = "Fig5CalcDump.bin"
     if resetDumpFile and os.path.isfile(binDumpFileName):
         os.unlink(binDumpFileName)
@@ -155,7 +157,7 @@ def GenerateFig5(resetDumpFile=False):
         forceDecayTau=0.3 # dummy as there is no input
         basalValues0,values,_ = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues,KickAmplitudeLinspace0))
 
-        print("============================= forceDecayTau %lf normed by %s ========================= " %(forceDecayTau,basalValues0))
+        logging.info("============================= forceDecayTau %lf normed by %s ========================= " %(forceDecayTau,basalValues0))
         basalValues,values,setOfModelObjects = copy.deepcopy(KickAmplitudeProcessor(npoints,firstAfterWarmup,forceDelayTau,forceDecayTau,p_I1,respBPM,basalValues0,KickAmplitudeLinspace))
 
         np.array(values).tofile(binDumpFileName)
@@ -177,13 +179,14 @@ def GenerateFig5(resetDumpFile=False):
     ylim = copy.deepcopy(ax.get_ylim())# keep original limits.\
     xlim = copy.deepcopy(ax.get_xlim())# keep original limits.\
     leftEdge,rightEdge = findLimits(KickAmplitudeLinspace,Dsd,100,False)
+    logging.info("Edges detected at: %lf and %lf" % (leftEdge,rightEdge))
     ax.fill([leftEdge,leftEdge,rightEdge,rightEdge,leftEdge],[ylim[0],ylim[1],ylim[1],ylim[0],ylim[0]],color='black',linewidth=1,edgecolor='black',linestyle='solid',hatch='/',fill=False)
     #ax.bar(range(0,2), np.arange(ylim[0],ylim[1]), color='red', edgecolor='black', hatch="/")
     ax.set_ylim([ylim[0],ylim[1]])
     ax.set_xlim([xlim[0],xlim[1]])
     fname = "Fig5.png"
     plt.savefig(fname)
-    print("Writing to: %s" % (fname))
+    logging.info("Writing to: %s" % (fname))
     #plt.show()
 
 def GenerateFig3():
@@ -241,7 +244,7 @@ def GenerateFig3():
     plt.setp(ax.get_xticklabels(), visible = False)
 
     ax = plt.subplot(gs[3])
-    plt.ylabel("ISI [ms]")
+    plt.ylabel("RR [ms]")
     x = fireNotifierHeart.firingTimes[1:]
     y = fireNotifierHeart.ISI()[1:]*1000
     plt.plot(x,y,"k+-")
@@ -385,6 +388,7 @@ def GenerateFig2():
     plt.savefig(fname)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     GenerateFig2()
     GenerateFig3()
     GenerateFig3A()
