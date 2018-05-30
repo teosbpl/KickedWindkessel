@@ -85,21 +85,21 @@ class RespiratoryDelayedSmearedHeartActionForce:
         self.KickAmplitude = 1.0 #Kick amplitude
         self.DelayTau = 0.1 #Time from firing order to actual kick
         self.SamplingTime = 0.1 # required to normalize delay time.
-        self.FireOrderTime = None #Time of last beat [s]
+        self.fireOrderTime = None #Time of last beat [s]
         self.DecayTau = 0.2 # Time by which the drive decays
         self.Notify = NilNotify
     #pre step length zmiana od 0 do 1.25 - przesuwa w fazie.
     def ApplyDrive(self,data):
         if data[self.CoordinateNumberForInput] > 0.0:            
                 data[self.CoordinateNumberForInput] = 0.0#reset the kick signal
-                self.FireOrderTime = data.t
+                self.fireOrderTime = data.t
         justOpened = False
-        if self.FireOrderTime and data.t >= self.FireOrderTime: #is not None
+        if self.fireOrderTime and data.t >= self.fireOrderTime: #is not None
             #waiting for delay time
-            timeFromFireOrderTime = data.t - self.FireOrderTime
+            timeFromFireOrderTime = data.t - self.fireOrderTime
             if timeFromFireOrderTime >= self.DelayTau:
                 self.Drive = self.Drive + self.KickAmplitude
-                self.FireOrderTime = None #nullify after use, wait for next kick
+                self.fireOrderTime = None #nullify after use, wait for next kick
                 justOpened = True
         data[self.CoordinateNumber] = self.Drive
         #decrement drive
